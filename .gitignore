@@ -4,6 +4,9 @@
 /src/main/resources/
 /src/test/
 /.idea/
-SafeTrade/
 /build
 /.gradle
+/settings.gradle
+/gradle
+/gradlew
+/gradlew.bat
