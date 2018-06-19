@@ -1,0 +1,9 @@
+# Created by .ignore support plugin (hsz.mobi)
+
+/libs/
+/src/main/resources/
+/src/test/
+/.idea/
+SafeTrade/
+/build
+/.gradle
