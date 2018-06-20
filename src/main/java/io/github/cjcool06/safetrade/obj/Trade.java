@@ -358,8 +358,10 @@ public class Trade {
                         Utils.giveItems(participants[1], getItems(participants[1]), true);
                     }
                     view.clear();
-                    listedPokemon.clear();
-                    money.clear();
+                    listedPokemon.get(participants[0]).clear();
+                    listedPokemon.get(participants[1]).clear();
+                    money.put(participants[0], 0);
+                    money.put(participants[1], 0);
                     inventory.clear();
                 })
                 .delayTicks(1)
