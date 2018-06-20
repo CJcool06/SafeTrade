@@ -56,7 +56,6 @@ public class Trade {
     public boolean isExecuting = false;
     public boolean participant0Ready = false;
     public boolean participant1Ready = false;
-    private Player forceCloser = null;
 
     public Trade(Player participant1, Player participant2) {
         participants = new Player[]{participant1, participant2};
@@ -325,17 +324,18 @@ public class Trade {
     // Forces an inventory to close (if none present, will call #end), which will force #handleClose, which will call #end.
     // Use when a you want to force a trade to close.
     public void forceEnd() {
-        if (participants[0].isOnline()) {
-            forceCloser = participants[0];
-            participants[0].closeInventory();
-        }
-        else if (participants[1].isOnline()) {
-            forceCloser = participants[1];
-            participants[1].closeInventory();
-        }
-        else {
-            end();
-        }
+        Sponge.getScheduler().createTaskBuilder()
+                .execute(() -> {
+                    if (participants[0].isOnline()) {
+                        //forceCloser = participants[0];
+                        participants[0].closeInventory();
+                    }
+                    if (participants[1].isOnline()) {
+                        //forceCloser = participants[1];
+                        participants[1].closeInventory();
+                    }
+                    end();
+                }).delayTicks(1).submit(SafeTrade.getPlugin());
     }
 
     // Only used when a player has closed their inv, either on their own (ESC) or forced (#forceEnd)
@@ -616,6 +616,8 @@ public class Trade {
                             return;
                         }
                         if (addItem(player, snapshot)) {
+                            participant0Ready = false;
+                            participant1Ready = false;
                             // Needs to wait for the click to cancel as the slot is momentarily empty when clicked
                             Sponge.getScheduler().createTaskBuilder().execute(() -> transaction.getSlot().clear()).delayTicks(1).submit(SafeTrade.getPlugin());
                         }
@@ -637,10 +639,14 @@ public class Trade {
                             if (isInSide(player, slot.getValue())) {
                                 // Handles items inside the player's respected trade side
                                 if (isPokemonItem(snapshot.createStack())) {
+                                    participant0Ready = false;
+                                    participant1Ready = false;
                                     removePokemon(player, snapshot.createStack(), slot.getValue());
                                 }
                                 else {
                                     if (removeItem(slot.getValue())) {
+                                        participant0Ready = false;
+                                        participant1Ready = false;
                                         Utils.giveItem(player, snapshot.createStack(), true);
                                     }
                                 }
@@ -657,11 +663,15 @@ public class Trade {
                                 }
                             }
                             else if (snapshot.createStack().equalTo(ItemUtils.getResetMoneyButton())) {
+                                participant0Ready = false;
+                                participant1Ready = false;
                                 money.put(player, 0);
                             }
                             // Uses for loop to check money items
                             for (int i = 1; i <= 100000; i *= 10) {
                                 if (snapshot.createStack().equalTo(ItemUtils.getMoneyButton(i))) {
+                                    participant0Ready = false;
+                                    participant1Ready = false;
                                     if (player.equals(participants[0])) {
                                         int newMoney = money.get(participants[0]);
                                         newMoney += i;
@@ -679,19 +689,16 @@ public class Trade {
                             for (int i = 1; i <= 6; i++) {
                                 if (snapshot.createStack().equalTo(ItemUtils.getSlotButton(i))) {
                                     EntityPixelmon slotPokemon = Utils.getPokemonInSlot(player, i);
+                                    // Prevents adding the same pokemon again
                                     for (EntityPixelmon pixelmon : listedPokemon.get(player).values()) {
                                         if (PixelmonMethods.isIDSame(slotPokemon.getPokemonId(), pixelmon.getPokemonId())) {
                                             break outerloop;
                                         }
                                     }
-                                    if (player.equals(participants[0])) {
-                                        if (slotPokemon != null) {
-                                            addPokemon(player, slotPokemon);
-                                        }
-                                    } else {
-                                        if (slotPokemon != null) {
-                                            addPokemon(player, slotPokemon);
-                                        }
+                                    if (slotPokemon != null) {
+                                        participant0Ready = false;
+                                        participant1Ready = false;
+                                        addPokemon(player, slotPokemon);
                                     }
                                 }
                             }
@@ -707,25 +714,10 @@ public class Trade {
     // Handles giving back items
     private void handleClose(InteractInventoryEvent.Close event) {
         isExecuting = false;
-        if (forceCloser != null) {
-            // Schedular prevents a disgusting sponge phase error that I'm guessing is due to attempting to closing the inventory during the close inventory event.
-            Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                if (forceCloser.equals(participants[0])) {
-                    // Needs to be null before trying to close another inventory, but also needs to be checked.
-                    forceCloser = null;
-                    participants[1].closeInventory();
-                }
-                else {
-                    forceCloser = null;
-                    participants[0].closeInventory();
-                }
-                end();
-            }).delayTicks(1).submit(SafeTrade.getPlugin());
-        }
         // Checks if the player is the cause of the inventory closing (ESC)
         if (event.getCause().first(Player.class).isPresent()) {
             Player player = event.getCause().first(Player.class).get();
-            // Schedular prevents a disgusting sponge phase error that I'm guessing is due to attempting to closing the inventory during the close inventory event.
+            // Schedular prevents a disgusting sponge phase error that I'm guessing is due to attempting to close the inventory during the close inventory event.
             Sponge.getScheduler().createTaskBuilder().execute(() -> {
                 if (player.equals(participants[0])) {
                     participants[1].closeInventory();

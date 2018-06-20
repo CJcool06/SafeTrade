@@ -2,7 +2,6 @@ package io.github.cjcool06.safetrade.commands;
 
 import com.google.common.collect.ImmutableMap;
 import io.github.cjcool06.safetrade.data.SafeTradeData;
-import org.spongepowered.api.Sponge;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.args.CommandContext;
@@ -14,7 +13,6 @@ import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
 import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.item.inventory.ItemStackSnapshot;
-import org.spongepowered.api.service.user.UserStorageService;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
 
@@ -31,7 +29,7 @@ public class ItemsCommand implements CommandExecutor {
                                 .put("clear", "clear")
                                 .put("list", "list")
                                 .build()),
-                        GenericArguments.string(Text.of("target")))
+                        GenericArguments.user(Text.of("target")))
                 .executor(new ItemsCommand())
                 .build();
     }
@@ -39,20 +37,15 @@ public class ItemsCommand implements CommandExecutor {
     public CommandResult execute(CommandSource src, CommandContext args) {
         if (src instanceof Player) {
             Player player = (Player)src;
-            String targetString = args.<String>getOne("target").get();
-            Optional<User> user = Sponge.getServiceManager().provide(UserStorageService.class).get().get(targetString);
+            User user = args.<User>getOne("target").get();
             String operation = args.<String>getOne("options").get();
 
-            if (!user.isPresent()) {
-                player.sendMessage(Text.of(TextColors.RED, "User could not be found."));
-                return CommandResult.success();
-            }
             SafeTradeData data;
-            if (user.get().isOnline()) {
-                data = user.get().getPlayer().get().get(SafeTradeData.class).orElse(new SafeTradeData());
+            if (user.isOnline()) {
+                data = user.getPlayer().get().getOrCreate(SafeTradeData.class).get();
             }
             else {
-                data = user.get().get(SafeTradeData.class).orElse(new SafeTradeData());
+                data = user.getOrCreate(SafeTradeData.class).get();
             }
 
             if (operation.equalsIgnoreCase("add")) {
@@ -61,16 +54,23 @@ public class ItemsCommand implements CommandExecutor {
                     player.sendMessage(Text.of(TextColors.RED, "You must have the item you want to add in your hand."));
                     return CommandResult.success();
                 }
+                if (!user.isOnline()) {
+                    player.sendMessage(Text.of(TextColors.RED, "Manipulating offline storage has been temporarily disabled and awaiting a fix."));
+                    return CommandResult.success();
+                }
                 data.addPendingItem(optItem.get().createSnapshot());
-                //player.get(SafeTradeData.class).get().addPendingItem(optItem.get().createSnapshot());   // Debug
-                player.sendMessage(Text.of(TextColors.GREEN, "Successfully added item to " + user.get().getName() + "'s SafeTrade storage."));
+                player.sendMessage(Text.of(TextColors.GREEN, "Successfully added item to " + user.getName() + "'s SafeTrade storage."));
             }
             else if (operation.equalsIgnoreCase("clear")) {
+                if (!user.isOnline()) {
+                    player.sendMessage(Text.of(TextColors.RED, "Manipulating offline storage has been temporarily disabled and awaiting a fix."));
+                    return CommandResult.success();
+                }
                 data.clearPendingItems();
-                player.sendMessage(Text.of(TextColors.GREEN, "Successfully cleared " + user.get().getName() + "'s SafeTrade storage."));
+                player.sendMessage(Text.of(TextColors.GREEN, "Successfully cleared " + user.getName() + "'s SafeTrade storage."));
             }
             else if (operation.equalsIgnoreCase("list")) {
-                player.sendMessage(Text.of(TextColors.GOLD, user.get().getName() + "'s SafeTrade storage:"));
+                player.sendMessage(Text.of(TextColors.GOLD, user.getName() + "'s SafeTrade storage:"));
                 for (ItemStackSnapshot snapshot : data.getPendingItems().get()) {
                     player.sendMessage(Text.of(TextColors.GREEN, snapshot.getQuantity() + "x ", TextColors.AQUA, snapshot.getTranslation().get()));
                 }
