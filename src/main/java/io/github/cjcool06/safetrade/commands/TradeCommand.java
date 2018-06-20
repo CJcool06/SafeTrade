@@ -1,10 +1,8 @@
 package io.github.cjcool06.safetrade.commands;
 
-import com.pixelmonmod.pixelmon.storage.PixelmonStorage;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.obj.Trade;
 import io.github.cjcool06.safetrade.utils.Utils;
-import net.minecraft.entity.player.EntityPlayerMP;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
@@ -133,8 +131,6 @@ public class TradeCommand implements CommandExecutor {
                 return;
             }
 
-            PixelmonStorage.pokeBallManager.getPlayerStorage((EntityPlayerMP)requester).get().recallAllPokemon();
-            PixelmonStorage.pokeBallManager.getPlayerStorage((EntityPlayerMP)requestee).get().recallAllPokemon();
             Trade trade = new Trade(requester, requestee);
             trade.initiateHandshake();
         }

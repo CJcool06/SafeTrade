@@ -77,6 +77,8 @@ public class Trade {
         if (SafeTrade.EVENT_BUS.post(new TradeStartEvent(this))) {
             return;
         }
+        PixelmonStorage.pokeBallManager.getPlayerStorage((EntityPlayerMP)participants[0]).get().recallAllPokemon();
+        PixelmonStorage.pokeBallManager.getPlayerStorage((EntityPlayerMP)participants[1]).get().recallAllPokemon();
         if (participants[0].isViewingInventory()) {
             participants[0].closeInventory();
         }
