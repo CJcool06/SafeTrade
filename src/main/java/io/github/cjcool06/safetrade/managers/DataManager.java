@@ -2,9 +2,6 @@ package io.github.cjcool06.safetrade.managers;
 
 import com.google.common.reflect.TypeToken;
 import io.github.cjcool06.safetrade.SafeTrade;
-import io.github.cjcool06.safetrade.api.enquiry.ListingBase;
-import io.github.cjcool06.safetrade.api.enquiry.ListingRegistrar;
-import io.github.cjcool06.safetrade.api.events.listing.RemoveListingEvent;
 import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.obj.Log;
 import io.github.cjcool06.safetrade.obj.Trade;
@@ -21,7 +18,9 @@ import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Any method related to reading/writing to files should be called asynchronously
@@ -29,7 +28,6 @@ import java.util.*;
 public class DataManager {
     private static final File dataDir = new File("config/safetrade/data");
     private static final ArrayList<Trade> activeTrades = new ArrayList<>();
-    private static final ArrayList<ListingBase> activeListings = new ArrayList<>();
 
     public static void load() {
         dataDir.mkdirs();
@@ -39,22 +37,7 @@ public class DataManager {
                 continue;
             }
             try {
-                ConfigurationLoader<CommentedConfigurationNode> loader = getLoader(file);
-                CommentedConfigurationNode node = loader.load();
-
-                List<Map<String, String>> list = node.getNode("listings").getList(new TypeToken<Map<String, String>>(){});
-                Iterator<Map<String, String>> iter = list.iterator();
-
-                while (iter.hasNext()) {
-                    Map<String, String> map = iter.next();
-                    ListingBase listing = deserialiseListing(map);
-                    if (hasListingExpired(listing)) {
-                        removeListing(listing);
-                    }
-                    else {
-                        activeListings.add(listing);
-                    }
-                }
+                // TODO
             } catch (Exception e) {
                 SafeTrade.getLogger().error("Error reading file " + file.getName());
                 SafeTrade.getLogger().error(e.getMessage());
@@ -68,120 +51,6 @@ public class DataManager {
                 file.delete();
             }
         }
-    }
-
-    public static void addListing(ListingBase listing) {
-        File file = getFile(listing.getUser());
-        if (!hasListingExpired(listing)) {
-            activeListings.add(listing);
-            try {
-                ConfigurationLoader<CommentedConfigurationNode> loader = getLoader(file);
-                CommentedConfigurationNode node = loader.load();
-                List<Map<String, String>> list = getAllListingsMap(listing.getUser());
-                list.add(listing.toContainer());
-                node.getNode("listings").setValue(new TypeToken<List<Map<String, String>>>(){}, list);
-                loader.save(node);
-            } catch (Exception e) {
-                SafeTrade.getLogger().error("Error adding listing. Offending file: " + file.getName());
-                e.printStackTrace();
-            }
-        }
-        else {
-            SafeTrade.getLogger().info("Caught trying to add expired listing to file " + file.getName());
-        }
-    }
-
-    public static void removeListing(ListingBase listing) {
-        File file = getFile(listing.getUser());
-        if (file.exists()) {
-            SafeTrade.EVENT_BUS.post(new RemoveListingEvent(listing));
-            activeListings.remove(listing);
-            try {
-                ConfigurationLoader<CommentedConfigurationNode> loader = getLoader(file);
-                CommentedConfigurationNode node = loader.load();
-                ArrayList<Map<String, String>> list = new ArrayList<>();
-                ArrayList<ListingBase> listings = getAllListings(listing.getUser());
-                listings.removeIf(listingBase -> listingBase.getUniqueID().equals(listing.getUniqueID()));
-                for (ListingBase listingBase : listings) {
-                    list.add(listingBase.toContainer());
-                }
-                node.getNode("listings").setValue(new TypeToken<List<Map<String, String>>>(){}, list);
-                loader.save(node);
-            } catch (Exception e) {
-                SafeTrade.getLogger().error("Error removing listing. Offending file: " + file.getName());
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public static void clearListings(User user) {
-        File file = getFile(user);
-        try {
-            ConfigurationLoader<CommentedConfigurationNode> loader = getLoader(file);
-            CommentedConfigurationNode node = loader.load();
-            node.getNode("listings").setValue(new TypeToken<List<Map<String, String>>>(){}, new ArrayList<>());
-            loader.save(node);
-        } catch (Exception e) {
-            SafeTrade.getLogger().error("Error adding listing. Offending file: " + file.getName());
-            e.printStackTrace();
-        }
-        activeListings.removeIf(listing -> listing.getUniqueID().equals(user.getUniqueId()));
-    }
-
-    public static ArrayList<ListingBase> getActiveListings(User user) {
-        ArrayList<ListingBase> listings = new ArrayList<>();
-        for (ListingBase listing : activeListings) {
-            if (listing.getUser().getUniqueId().equals(user.getUniqueId())) {
-                listings.add(listing);
-            }
-        }
-
-        return listings;
-    }
-
-    public static ArrayList<ListingBase> getAllListings(User user) {
-        ArrayList<ListingBase> listings = new ArrayList<>();
-        File file = getFile(user);
-        if (file.exists()) {
-            try {
-                ConfigurationLoader<CommentedConfigurationNode> loader = getLoader(file);
-                CommentedConfigurationNode node = loader.load();
-                if (node.getNode("listings").isVirtual()) {
-                    return listings;
-                }
-                List<Map<String, String>> list = new ArrayList<>(node.getNode("listings").getList(new TypeToken<Map<String, String>>(){}));
-                for (Map<String, String> map : list) {
-                    listings.add(deserialiseListing(map));
-                }
-            } catch (Exception e) {
-                SafeTrade.getLogger().error("Error getting all listings. Offending file: " + file.getName());
-                SafeTrade.getLogger().error(e.getMessage());
-                e.printStackTrace();
-            }
-        }
-
-        return listings;
-    }
-
-    private static ArrayList<Map<String, String>> getAllListingsMap(User user) {
-        ArrayList<Map<String, String>> listings = new ArrayList<>();
-        File file = getFile(user);
-        if (file.exists()) {
-            try {
-                ConfigurationLoader<CommentedConfigurationNode> loader = getLoader(file);
-                CommentedConfigurationNode node = loader.load();
-                if (node.getNode("listings").isVirtual()) {
-                    return listings;
-                }
-                listings.addAll(node.getNode("listings").getList(new TypeToken<Map<String, String>>(){}));
-            } catch (Exception e) {
-                SafeTrade.getLogger().error("Error getting all string listings. Offending file: " + file.getName());
-                SafeTrade.getLogger().error(e.getMessage());
-                e.printStackTrace();
-            }
-        }
-
-        return listings;
     }
 
     public static void addLog(User user, Log log) {
@@ -349,21 +218,6 @@ public class DataManager {
         return items;
     }
 
-    public static ListingBase deserialiseListing(Map<String, String> map) throws Exception {
-        UUID uniqueID = UUID.fromString(map.get("uuid"));
-        User user = Utils.getUser(UUID.fromString(map.get("user"))).isPresent() ?
-                Utils.getUser(UUID.fromString(map.get("user"))).get() : null;
-        if (user == null) {
-            throw new Exception("Could not deserialise listing: User not found.");
-        }
-        ListingBase listing = ListingRegistrar.parse(map.get("type"), user, LocalDateTime.parse(map.get("endDate"), ListingBase.getFormatter()), uniqueID);
-        if (listing == null) {
-            throw new Exception("Could not deserialise listing: Registrar returned null trying to parse listing type. Offending type: " + map.get("type"));
-        }
-        listing.fromContainer(map);
-        return listing;
-    }
-
     public static int recycleLogs() {
         int count = 0;
         for (File file : dataDir.listFiles()) {
@@ -409,10 +263,6 @@ public class DataManager {
         return count;
     }
 
-    public static ArrayList<ListingBase> getActiveListings() {
-        return activeListings;
-    }
-
     public static ArrayList<Trade> getActiveTrades() {
         return new ArrayList<>(activeTrades);
     }
@@ -435,9 +285,6 @@ public class DataManager {
         activeTrades.remove(trade);
     }
 
-    public static boolean hasListingExpired(ListingBase listing) {
-        return listing.getEndDate().isBefore(LocalDateTime.now());
-    }
 
     public static ConfigurationLoader<CommentedConfigurationNode> getLoader(File file) {
         return HoconConfigurationLoader.builder().setFile(file).build();
