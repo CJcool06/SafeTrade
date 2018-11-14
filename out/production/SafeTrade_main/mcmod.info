@@ -1,0 +1,18 @@
+[
+  {
+    "modid": "safetrade",
+    "name": "SafeTrade",
+    "description": "Trade Pokemon and items safely",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "updateUrl": "",
+    "authorList": [
+      "CJcool06"
+    ],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

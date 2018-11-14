@@ -1,5 +1,6 @@
 package io.github.cjcool06.safetrade.utils;
 
+import com.pixelmonmod.pixelmon.api.pokemon.PokemonSpec;
 import com.pixelmonmod.pixelmon.battles.BattleRegistry;
 import com.pixelmonmod.pixelmon.battles.controller.BattleControllerBase;
 import com.pixelmonmod.pixelmon.config.PixelmonEntityList;
@@ -8,11 +9,16 @@ import com.pixelmonmod.pixelmon.entities.pixelmon.EntityPixelmon;
 import com.pixelmonmod.pixelmon.storage.PixelmonStorage;
 import com.pixelmonmod.pixelmon.storage.PlayerStorage;
 import com.pixelmonmod.pixelmon.util.helpers.SpriteHelper;
-import io.github.cjcool06.safetrade.data.SafeTradeData;
+import io.github.cjcool06.safetrade.SafeTrade;
+import io.github.cjcool06.safetrade.api.enquiry.ListingBase;
+import io.github.cjcool06.safetrade.config.Config;
+import io.github.cjcool06.safetrade.listings.PokemonListing;
+import io.github.cjcool06.safetrade.managers.DataManager;
 import io.github.cjcool06.safetrade.obj.Trade;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraft.world.World;
+import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.key.Keys;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
@@ -23,21 +29,33 @@ import org.spongepowered.api.item.inventory.entity.Hotbar;
 import org.spongepowered.api.item.inventory.entity.MainPlayerInventory;
 import org.spongepowered.api.item.inventory.query.QueryOperationTypes;
 import org.spongepowered.api.item.inventory.transaction.InventoryTransactionResult;
+import org.spongepowered.api.service.user.UserStorageService;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.action.TextActions;
 import org.spongepowered.api.text.format.TextColors;
 import org.spongepowered.api.text.format.TextStyles;
 
 import java.text.DecimalFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public class Utils {
+    public static Optional<User> getUser(UUID uuid) {
+        return Sponge.getServiceManager().provide(UserStorageService.class).get().get(uuid);
+    }
 
     public static EntityPixelmon getPokemonInSlot(Player player, int slot) {
         PlayerStorage storage = PixelmonStorage.pokeBallManager.getPlayerStorage((EntityPlayerMP)player).get();
         if (storage.partyPokemon[slot - 1] != null) {
-            return (EntityPixelmon)PixelmonEntityList.createEntityFromNBT(storage.partyPokemon[slot - 1], FMLCommonHandler.instance().getMinecraftServerInstance().getEntityWorld());
+            return (EntityPixelmon)PixelmonEntityList.createEntityFromNBT(storage.partyPokemon[slot - 1], (World)player.getWorld());
+            // Doesn't work
+            //return new PokemonSpec().readFromNBT(storage.partyPokemon[slot - 1]).create((World)player.getWorld());
         }
 
         return null;
@@ -61,12 +79,11 @@ public class Utils {
         } else {
             nbt.setString("SpriteName", "pixelmon:sprites/pokemon/" + idValue + SpriteHelper.getSpriteExtra(pokemon.getSpecies().name, pokemon.getForm()));
         }
-
         item.setTagCompound(nbt);
         return (ItemStack)(Object)item;
     }
 
-    public static Text getSuccessMessage(Trade trade) {
+    public static Text[] getTradeOverviewLore(Trade trade) {
         Text.Builder builder1 =  Text.builder();
         Text.Builder builder2 = Text.builder();
 
@@ -86,10 +103,10 @@ public class Utils {
                 .color(TextColors.DARK_AQUA)
                 .build();
         for (EntityPixelmon pixelmon : trade.listedPokemon.get(trade.participants[0]).values()) {
-            builder1.append(Text.builder().append(Text.of(TextColors.AQUA, "\n" + pixelmon.getName())).build()).build();
+            builder1.append(Text.builder().append(Text.of(TextColors.AQUA, "\n" + pixelmon.getName() + (pixelmon.isEgg && !Config.showEggStats ? " Egg" : ""))).build()).build();
         }
         for (EntityPixelmon pixelmon : trade.listedPokemon.get(trade.participants[1]).values()) {
-            builder2.append(Text.builder().append(Text.of(TextColors.AQUA, "\n" + pixelmon.getName())).build()).build();
+            builder2.append(Text.builder().append(Text.of(TextColors.AQUA, "\n" + pixelmon.getName() + (pixelmon.isEgg && !Config.showEggStats ? " Egg" : ""))).build()).build();
         }
 
         builder1.append(Text.of("\n" + "Items:"))
@@ -113,25 +130,35 @@ public class Utils {
             }
         }
 
-        return Text.builder("SafeTrade Overview >>")
+        return new Text[]{builder1.build(), builder2.build()};
+    }
+
+    public static Text getSuccessMessage(Trade trade) {
+        Text[] texts = getTradeOverviewLore(trade);
+
+        return Text.builder("SafeTrade Overview >> ")
                 .color(TextColors.GREEN)
                 .style(TextStyles.BOLD)
-                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, " ", trade.participants[0].getName()))
-                        .onHover(TextActions.showText(builder1.build()))
+                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, trade.participants[0].getName()))
+                        .onHover(TextActions.showText(texts[0]))
                         .build())
-                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, " &"))
+                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, " & "))
                         .build())
-                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, " ", trade.participants[1].getName()))
-                        .onHover(TextActions.showText(builder2.build()))
+                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, trade.participants[1].getName()))
+                        .onHover(TextActions.showText(texts[1]))
                         .build())
                 .build();
     }
 
     public static ArrayList<Text> getPokemonLore(EntityPixelmon pokemon) {
+        ArrayList<Text> lore = new ArrayList<>();
+        if (pokemon.isEgg && !Config.showEggStats) {
+            lore.add(Text.of(TextColors.GRAY, "The stats of this egg are a mystery."));
+            return lore;
+        }
         DecimalFormat df = new DecimalFormat("#0.##");
         int ivSum = pokemon.stats.ivs.HP + pokemon.stats.ivs.Attack + pokemon.stats.ivs.Defence + pokemon.stats.ivs.SpAtt + pokemon.stats.ivs.SpDef + pokemon.stats.ivs.Speed;
         int evSum = pokemon.stats.evs.hp + pokemon.stats.evs.attack + pokemon.stats.evs.defence + pokemon.stats.evs.specialAttack + pokemon.stats.evs.specialDefence + pokemon.stats.evs.speed;
-        ArrayList<Text> lore = new ArrayList<>();
         // Stats
         //String star = "\u2605";
         String nickname = pokemon.getNickname().equals("") ? pokemon.getName() : pokemon.getNickname();
@@ -149,6 +176,7 @@ public class Utils {
         else {
             heldItem += "None";
         }
+        String breedable = new PokemonSpec("unbreedable").matches(pokemon) ? "No" : "Yes";
         // EVs
         int hpEV = pokemon.stats.evs.hp;
         int attackEV = pokemon.stats.evs.attack;
@@ -179,6 +207,7 @@ public class Utils {
         lore.add(Text.of(TextColors.DARK_AQUA, "Ability: ", TextColors.AQUA, ability));
         lore.add(Text.of(TextColors.DARK_AQUA, "OT: ", TextColors.AQUA, originalTrainer));
         lore.add(Text.of(TextColors.DARK_AQUA, "Held Item: ", TextColors.AQUA, heldItem));
+        lore.add(Text.of(TextColors.DARK_AQUA, "Breedable: ", TextColors.AQUA, breedable));
         lore.add(Text.of());
         lore.add(Text.of(TextColors.DARK_AQUA, "IVs: ", TextColors.GRAY, "(", TextColors.RED, totalIVs, TextColors.GRAY, ")"));
         lore.add(Text.of(TextColors.AQUA, "Att: ", TextColors.GREEN, attackIV, TextColors.DARK_GRAY, " | ", TextColors.AQUA, "Sp.Att: ", TextColors.GREEN, spAttkIV));
@@ -197,33 +226,7 @@ public class Utils {
         return lore;
     }
 
-    // If items are unsuccessful they get added to storage
-    public static void giveItems(User user, List<ItemStackSnapshot> snapshots, boolean sendInfoMessage) {
-        int unsuccessfulCount = 0;
-        for (ItemStackSnapshot snapshot : snapshots) {
-            ItemStack item = snapshot.createStack();
-            Inventory hotbar = user.getInventory().query(QueryOperationTypes.INVENTORY_TYPE.of(Hotbar.class));
-            InventoryTransactionResult hotbarResult =  hotbar.offer(item);
-
-            if (hotbarResult.getType() != InventoryTransactionResult.Type.SUCCESS) {
-                Inventory main = user.getInventory().query(QueryOperationTypes.INVENTORY_TYPE.of(MainPlayerInventory.class));
-                InventoryTransactionResult mainResult =  main.offer(item);
-
-                // I'm not sure
-                if (mainResult.getType() != InventoryTransactionResult.Type.SUCCESS) {
-                    unsuccessfulCount++;
-                    user.get(SafeTradeData.class).get().addPendingItem(snapshot);
-                }
-            }
-        }
-        if (unsuccessfulCount > 0 && sendInfoMessage && user.isOnline()) {
-            user.getPlayer().get().sendMessage(Text.of(TextColors.RED, "SafeTrade wasn't able to place " + unsuccessfulCount + " items in to your inventory. \n" +
-                    "SafeTrade has stored your items and awaits your relog to obtain them."));
-        }
-    }
-
-    // If item is unsuccessful it gets added to storage
-    public static void giveItem(User user, ItemStack item, boolean sendInfoMessage) {
+    public static boolean giveItem(User user, ItemStack item) {
         Inventory hotbar = user.getInventory().query(QueryOperationTypes.INVENTORY_TYPE.of(Hotbar.class));
         InventoryTransactionResult hotbarResult =  hotbar.offer(item);
 
@@ -231,14 +234,48 @@ public class Utils {
             Inventory main = user.getInventory().query(QueryOperationTypes.INVENTORY_TYPE.of(MainPlayerInventory.class));
             InventoryTransactionResult mainResult =  main.offer(item);
 
-            // I'm not sure
-            if (mainResult.getType() != InventoryTransactionResult.Type.SUCCESS) {
-                if (user.isOnline() && sendInfoMessage) {
-                    user.getPlayer().get().sendMessage(Text.of(TextColors.RED, "SafeTrade wasn't able to place 1 item in to your inventory. \n" +
-                            "SafeTrade has stored your item and awaits your relog to obtain them."));
-                }
-                user.get(SafeTradeData.class).get().addPendingItem(item.createSnapshot());
+            return mainResult.getType() == InventoryTransactionResult.Type.SUCCESS;
+        }
+
+        return true;
+    }
+
+    // If items are unsuccessful they get added to storage
+    public static void giveOrStoreSnapshot(User user, ItemStackSnapshot snapshot, boolean sendInfoMessage) {
+        if (!giveItem(user, snapshot.createStack())) {
+            Sponge.getScheduler().createTaskBuilder().execute(() -> DataManager.storeItem(user, snapshot)).async().submit(SafeTrade.getPlugin());
+            if (sendInfoMessage) {
+                user.getPlayer().get().sendMessage(Text.of(TextColors.RED, "SafeTrade wasn't able to place an item in to your inventory. \n" +
+                        "SafeTrade has stored your item and awaits your relog to obtain it."));
             }
+        }
+    }
+
+    // If items are unsuccessful they get added to storage
+    public static void giveOrStoreSnapshots(User user, List<ItemStackSnapshot> snapshots, boolean sendInfoMessage) {
+        int unsuccessfulCount = 0;
+        for (ItemStackSnapshot snapshot : snapshots) {
+            if (!user.isOnline()) {
+                Sponge.getScheduler().createTaskBuilder().execute(() -> DataManager.storeItem(user, snapshot)).async().submit(SafeTrade.getPlugin());
+                continue;
+            }
+
+            Inventory hotbar = user.getInventory().query(QueryOperationTypes.INVENTORY_TYPE.of(Hotbar.class));
+            InventoryTransactionResult hotbarResult =  hotbar.offer(snapshot.createStack());
+
+            if (hotbarResult.getType() != InventoryTransactionResult.Type.SUCCESS) {
+                Inventory main = user.getInventory().query(QueryOperationTypes.INVENTORY_TYPE.of(MainPlayerInventory.class));
+                InventoryTransactionResult mainResult =  main.offer(snapshot.createStack());
+
+                if (mainResult.getType() != InventoryTransactionResult.Type.SUCCESS) {
+                    unsuccessfulCount++;
+                    Sponge.getScheduler().createTaskBuilder().execute(() -> DataManager.storeItem(user, snapshot)).async().submit(SafeTrade.getPlugin());
+                }
+            }
+        }
+        if (unsuccessfulCount > 0 && sendInfoMessage && user.isOnline()) {
+            user.getPlayer().get().sendMessage(Text.of(TextColors.RED, "SafeTrade wasn't able to place " + unsuccessfulCount + " items in to your inventory. \n" +
+                    "SafeTrade has stored your items and awaits your relog to obtain them."));
         }
     }
 
@@ -252,5 +289,20 @@ public class Utils {
             return true;
         }
         return false;
+    }
+
+    public static Text createHoverText(Text baseText, Text hoverText) {
+        return Text.builder().append(baseText).onHover(TextActions.showText(hoverText)).build();
+    }
+
+    public static LocalDateTime convertToUTC(LocalDateTime localDateTime) {
+        return localDateTime.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+    }
+
+    public static int getActiveTime(ListingBase listing) {
+        // minutes will be negative most of the time as the end date will most likely be sometime in the future.
+        int minutes = (int)ChronoUnit.MINUTES.between(listing.getEndDate(), LocalDateTime.now());
+        // If minutes is positive, it will still give a correct active time granted the config hasn't changed.
+        return listing instanceof PokemonListing ? Config.pokemonListingTime + minutes : Config.itemListingTime + minutes;
     }
 }

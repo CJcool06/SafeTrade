@@ -18,7 +18,7 @@ plugins {
 apply plugin: 'net.minecraftforge.gradle.forge'
 
 
-version = "1.12.2-1.0.1"
+version = "1.12.2-1.1.6"
 group = "io.github.cjcool06"
 archivesBaseName = "SafeTrade"
 
@@ -30,6 +30,10 @@ minecraft {
     version = "1.12.2-14.23.4.2705"
     runDir = "run"
     mappings = "snapshot_20171003"
+}
+
+repositories {
+    mavenCentral()
 }
 
 dependencies {

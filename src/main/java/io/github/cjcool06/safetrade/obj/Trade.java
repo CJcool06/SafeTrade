@@ -1,21 +1,20 @@
 package io.github.cjcool06.safetrade.obj;
 
 import com.pixelmonmod.pixelmon.PixelmonMethods;
+import com.pixelmonmod.pixelmon.api.pokemon.PokemonSpec;
 import com.pixelmonmod.pixelmon.entities.pixelmon.EntityPixelmon;
 import com.pixelmonmod.pixelmon.storage.PixelmonStorage;
 import com.pixelmonmod.pixelmon.storage.PlayerStorage;
 import io.github.cjcool06.safetrade.SafeTrade;
-import io.github.cjcool06.safetrade.api.events.item.ItemAddEvent;
-import io.github.cjcool06.safetrade.api.events.item.ItemRemoveEvent;
-import io.github.cjcool06.safetrade.api.events.trade.HandleTradeEvent;
-import io.github.cjcool06.safetrade.api.events.trade.TradeEndEvent;
-import io.github.cjcool06.safetrade.api.events.trade.TradeStartEvent;
+import io.github.cjcool06.safetrade.api.events.trade.*;
+import io.github.cjcool06.safetrade.enums.TradeResult;
+import io.github.cjcool06.safetrade.managers.DataManager;
 import io.github.cjcool06.safetrade.utils.ItemUtils;
+import io.github.cjcool06.safetrade.utils.LogUtils;
 import io.github.cjcool06.safetrade.utils.Utils;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import org.spongepowered.api.Sponge;
-import org.spongepowered.api.data.key.Keys;
 import org.spongepowered.api.data.type.DyeColor;
 import org.spongepowered.api.data.type.DyeColors;
 import org.spongepowered.api.entity.living.player.Player;
@@ -23,7 +22,6 @@ import org.spongepowered.api.event.cause.Cause;
 import org.spongepowered.api.event.cause.EventContext;
 import org.spongepowered.api.event.item.inventory.ClickInventoryEvent;
 import org.spongepowered.api.event.item.inventory.InteractInventoryEvent;
-import org.spongepowered.api.item.ItemTypes;
 import org.spongepowered.api.item.inventory.Inventory;
 import org.spongepowered.api.item.inventory.InventoryArchetypes;
 import org.spongepowered.api.item.inventory.ItemStack;
@@ -56,6 +54,7 @@ public class Trade {
     public boolean isExecuting = false;
     public boolean participant0Ready = false;
     public boolean participant1Ready = false;
+    private boolean isClicking = false;
 
     public Trade(Player participant1, Player participant2) {
         participants = new Player[]{participant1, participant2};
@@ -74,22 +73,17 @@ public class Trade {
     }
 
     public void initiateHandshake() {
-        if (SafeTrade.EVENT_BUS.post(new TradeStartEvent(this))) {
+        if (SafeTrade.EVENT_BUS.post(new HandshakeEvent(this))) {
             return;
         }
         PixelmonStorage.pokeBallManager.getPlayerStorage((EntityPlayerMP)participants[0]).get().recallAllPokemon();
         PixelmonStorage.pokeBallManager.getPlayerStorage((EntityPlayerMP)participants[1]).get().recallAllPokemon();
-        if (participants[0].isViewingInventory()) {
-            participants[0].closeInventory();
-        }
-        if (participants[1].isViewingInventory()) {
-            participants[1].closeInventory();
-        }
+        closeInventories();
         drawDesign();
         update();
         participants[0].openInventory(inventory);
         participants[1].openInventory(inventory);
-        SafeTrade.activeTrades.add(this);
+        DataManager.addTrade(this);
     }
 
     public boolean hasPlayer(Player player) {
@@ -194,6 +188,10 @@ public class Trade {
     }
 
     public boolean addPokemon(Player player, EntityPixelmon pokemon) {
+        if (new PokemonSpec("untradeable").matches(pokemon)) {
+            player.sendMessage(Text.of(TextColors.GRAY, "Your " + pokemon.getName() + " is flagged as untradeable; you cannot trade it."));
+            return false;
+        }
         if (hasSideGotSpace(player)) {
             ItemStackSnapshot pokemonItemSnapshot = ItemUtils.getPokemonIcon(pokemon).createSnapshot();
             if (addItem(player, pokemonItemSnapshot)) {
@@ -258,6 +256,16 @@ public class Trade {
         return items;
     }
 
+    public boolean isEmpty() {
+        return getItems(participants[0]).isEmpty() && getItems(participants[1]).isEmpty() && money.get(participants[0]) == 0 && money.get(participants[1]) == 0 &&
+                listedPokemon.get(participants[0]).isEmpty() && listedPokemon.get(participants[1]).isEmpty();
+    }
+
+    public void setReady(boolean ready) {
+        this.participant0Ready = ready;
+        this.participant1Ready = ready;
+    }
+
     public void executeTrade() {
         isExecuting = true;
         Sponge.getScheduler().createTaskBuilder()
@@ -295,7 +303,6 @@ public class Trade {
         shuffleItems(participants[0], 0);
         shuffleItems(participants[1], 0);
 
-
         inventory.slots().forEach(slot -> {
             int index = slot.getProperty(SlotIndex.class, "slotindex").get().getValue();
             if (view.containsKey(index)) {
@@ -304,8 +311,8 @@ public class Trade {
         });
     }
 
-    // Shuffles items across if their is a free slot in a lower index
-    public void shuffleItems(Player player, int startingIndex) {
+    // Shuffles items across if there is a free slot in a lower index
+    private void shuffleItems(Player player, int startingIndex) {
         boolean hasPrevFreeSpace = false;
         for (int i = startingIndex; i < 36; i++) {
             if (isInSide(player, i)) {
@@ -323,55 +330,59 @@ public class Trade {
         }
     }
 
-    // Forces an inventory to close (if none present, will call #end), which will force #handleClose, which will call #end.
+    // Needs scheduler to work, otherwise the player who didn't close the inventory will not receive their items unless they refresh their inventory. Don't know why it happens
+    private void closeInventories() {
+        if (participants[0].isOnline()) {
+            participants[0].closeInventory();
+        }
+        if (participants[1].isOnline()) {
+            participants[1].closeInventory();
+        }
+
+    }
+
+    // Forces an inventory to close (if none present, will call #end), which will call #handleClose, which will call #end.
     // Use when a you want to force a trade to close.
     public void forceEnd() {
-        Sponge.getScheduler().createTaskBuilder()
-                .execute(() -> {
-                    if (participants[0].isOnline()) {
-                        //forceCloser = participants[0];
-                        participants[0].closeInventory();
-                    }
-                    if (participants[1].isOnline()) {
-                        //forceCloser = participants[1];
-                        participants[1].closeInventory();
-                    }
-                    end();
-                }).delayTicks(1).submit(SafeTrade.getPlugin());
+        end(TradeResult.CANCELLED);
     }
 
     // Only used when a player has closed their inv, either on their own (ESC) or forced (#forceEnd)
-    private void end() {
-        SafeTrade.EVENT_BUS.post(new TradeEndEvent(this));
+    private void end(TradeResult result) {
+        SafeTrade.EVENT_BUS.post(new TradeEndEvent(this, result));
         isExecuting = false;
-        participant0Ready = false;
-        participant1Ready = false;
-        SafeTrade.activeTrades.remove(this);
+        setReady(false);
+        DataManager.removeTrade(this);
 
-        // Needs scheduler to work, otherwise the player who didn't close the inventory will not receive their items unless they refresh their inventory. Don't know why it happens
+        closeInventories();
         Sponge.getScheduler().createTaskBuilder()
                 .execute(() -> {
-                    if (participants[0].isOnline()) {
-                        Utils.giveItems(participants[0], getItems(participants[0]), true);
+                    if (result != TradeResult.SUCCESS) {
+                        Utils.giveOrStoreSnapshots(participants[0], getItems(participants[0]), true);
+                        Utils.giveOrStoreSnapshots(participants[1], getItems(participants[1]), true);
                     }
-                    if (participants[1].isOnline()) {
-                        Utils.giveItems(participants[1], getItems(participants[1]), true);
-                    }
+                    /*
                     view.clear();
                     listedPokemon.get(participants[0]).clear();
                     listedPokemon.get(participants[1]).clear();
                     money.put(participants[0], 0);
                     money.put(participants[1], 0);
                     inventory.clear();
+                    */
                 })
                 .delayTicks(1)
                 .submit(SafeTrade.getPlugin());
     }
 
-    public void handleTrade() {
-        if (SafeTrade.EVENT_BUS.post(new HandleTradeEvent(this))) {
+    private void handleTrade() {
+        if (SafeTrade.EVENT_BUS.post(new TradeStartEvent(this))) {
             drawStatusDesign(DyeColors.RED, 5);
             update();
+            return;
+        }
+        // If this method is called while one/both players are offline this will prevent bad things from happening
+        if (!participants[0].isOnline() || !participants[1].isOnline()) {
+            end(TradeResult.FAILURE);
             return;
         }
         ArrayList<Player> players = new ArrayList<>();
@@ -396,17 +407,17 @@ public class Trade {
             if (count != listedPokemon.get(participant).size()) {
                 sendMessage(Text.of(TextColors.RED, "A discrepency was found between ", participant.getName(), "'s trading pokemon and their party. " +
                         "To prevent a possible scam, the trade has been cancelled."));
-                forceEnd();
+                end(TradeResult.FAILURE);
                 return;
             }
         }
 
         // Ensures each player has the money to pay for the trade
         for (Player participant : players) {
-            if (SafeTrade.getEcoService().getOrCreateAccount(participant.getUniqueId()).get().getBalance(SafeTrade.getEcoService().getDefaultCurrency()).intValue()
+            if (SafeTrade.getEcoService().getOrCreateAccount(participant.getUniqueId()).get().getBalance(SafeTrade.getEcoService().getDefaultCurrency()).doubleValue()
                     < money.get(participant)) {
                 sendMessage(Text.of(TextColors.RED, participant.getName(), " has insufficient funds for the trade."));
-                forceEnd();
+                end(TradeResult.FAILURE);
                 return;
             }
         }
@@ -416,23 +427,23 @@ public class Trade {
         PlayerStorage p0Storage = PixelmonStorage.pokeBallManager.getPlayerStorage((EntityPlayerMP)participants[0]).get();
         PlayerStorage p1Storage = PixelmonStorage.pokeBallManager.getPlayerStorage((EntityPlayerMP)participants[1]).get();
 
-        // Prevents either player from ending up with 0 pokemon in their party
-        if ((p0Storage.getTeam().size() - p0Pokemon.size() + p1Pokemon.size()) == 0) {
+        // Prevents either player from ending up with 0 non-egg pokemon in their party
+        if ((p0Storage.getTeam().size() - p0Pokemon.size() + p1Pokemon.size()) <= 0) {
             sendMessage(Text.of(TextColors.RED, participants[0].getName(), " will end up with no pokemon in their party. " +
                     "Please adjust your trade."));
-            forceEnd();
+            end(TradeResult.FAILURE);
             return;
         }
-        else if ((p1Storage.getTeam().size() - p1Pokemon.size() + p0Pokemon.size()) == 0) {
+        else if ((p1Storage.getTeam().size() - p1Pokemon.size() + p0Pokemon.size()) <= 0) {
             sendMessage(Text.of(TextColors.RED, participants[1].getName(), " will end up with no pokemon in their party. " +
                     "Please adjust your trade."));
-            forceEnd();
+            end(TradeResult.FAILURE);
             return;
         }
 
         // Processes trade. This is all done last so that if the last check (above) fails I do not have to revert stuff already traded.
         // Pokemon
-        // Removes the pokemon. Allows there to be party space when the pokemon is added to the respected party
+        // Removes the pokemon. Allows there to be party space when the pokemon are added to the respected party
         for (EntityPixelmon pixelmon : p0Pokemon) {
             for (int i = 1; i < 7; i++) {
                 EntityPixelmon slotPokemon = Utils.getPokemonInSlot(participants[0], i);
@@ -489,13 +500,14 @@ public class Trade {
         }
 
         // Items
-        Utils.giveItems(participants[0], getItems(participants[1]), true);
-        Utils.giveItems(participants[1], getItems(participants[0]), true);
+        Utils.giveOrStoreSnapshots(participants[0], getItems(participants[1]), true);
+        Utils.giveOrStoreSnapshots(participants[1], getItems(participants[0]), true);
 
         // Money
+        Account accountP0 = SafeTrade.getEcoService().getOrCreateAccount(participants[0].getUniqueId()).get();
+        Account accountP1 = SafeTrade.getEcoService().getOrCreateAccount(participants[1].getUniqueId()).get();
+
         if (money.get(participants[0]) > 0) {
-            Account accountP0 = SafeTrade.getEcoService().getOrCreateAccount(participants[0].getUniqueId()).get();
-            Account accountP1 = SafeTrade.getEcoService().getOrCreateAccount(participants[1].getUniqueId()).get();
 
             TransactionResult result = accountP0.transfer(accountP1, SafeTrade.getEcoService().getDefaultCurrency(), BigDecimal.valueOf(money.get(participants[0])),
                     Cause.of(EventContext.empty(), this));
@@ -503,13 +515,11 @@ public class Trade {
             if (result.getResult() != ResultType.SUCCESS) {
                 sendMessage(Text.of(TextColors.RED, "Error processing ", participants[0].getName(), "'s money transfer. " +
                         "To prevent a possible scam, the trade has been cancelled."));
-                forceEnd();
+                end(TradeResult.FAILURE);
                 return;
             }
         }
         if (money.get(participants[1]) > 0) {
-            Account accountP0 = SafeTrade.getEcoService().getOrCreateAccount(participants[0].getUniqueId()).get();
-            Account accountP1 = SafeTrade.getEcoService().getOrCreateAccount(participants[1].getUniqueId()).get();
 
             TransactionResult result = accountP1.transfer(accountP0, SafeTrade.getEcoService().getDefaultCurrency(), BigDecimal.valueOf(money.get(participants[1])),
                     Cause.of(EventContext.empty(), this));
@@ -517,20 +527,23 @@ public class Trade {
             if (result.getResult() != ResultType.SUCCESS) {
                 sendMessage(Text.of(TextColors.RED, "Error processing ", participants[1].getName(), "'s money transfer. " +
                         "To prevent a possible scam, the trade has been cancelled."));
-                forceEnd();
+                end(TradeResult.FAILURE);
                 return;
             }
         }
 
         sendMessage(Utils.getSuccessMessage(this));
-        clearSide(participants[0]);
-        clearSide(participants[1]);
-        forceEnd();
+        LogUtils.logTrade(this);
+        end(TradeResult.SUCCESS);
     }
 
     public void sendMessage(Text text) {
-        participants[0].sendMessage(text);
-        participants[1].sendMessage(text);
+        if (participants[0].isOnline()) {
+            participants[0].sendMessage(text);
+        }
+        if (participants[1].isOnline()) {
+            participants[1].sendMessage(text);
+        }
     }
 
     private void drawInfoDesign() {
@@ -560,15 +573,6 @@ public class Trade {
     }
 
     private void drawDesign() {
-        ItemStack borderItem = ItemStack.of(ItemTypes.STAINED_GLASS_PANE, 1);
-        borderItem.offer(Keys.DYE_COLOR, DyeColors.MAGENTA);
-
-        ItemStack greenCounter = ItemStack.of(ItemTypes.DYE, 1);
-        greenCounter.offer(Keys.DYE_COLOR, DyeColors.GREEN);
-
-        ItemStack redCounter = ItemStack.of(ItemTypes.DYE, 1);
-        redCounter.offer(Keys.DYE_COLOR, DyeColors.RED);
-
         drawStatusDesign(DyeColors.RED, 5);
         drawInfoDesign();
 
@@ -593,123 +597,122 @@ public class Trade {
             else if (index == 48) {
                 addItem(index, ItemUtils.getAcceptButton().createSnapshot());
             }
-            // Update
+            // Reset Money
             else if (index == 49) {
                 addItem(index, ItemUtils.getResetMoneyButton().createSnapshot());
             }
             // Not Ready
             else if (index == 50) {
-                addItem(index, ItemUtils.getCancelButton().createSnapshot());
+                addItem(index, ItemUtils.getCancelTradeButton().createSnapshot());
             }
         }
     }
 
     private void handleClick(ClickInventoryEvent event) {
         event.setCancelled(true);
-        // Shift clicking puts an empty air item in the view.
-        if (event instanceof ClickInventoryEvent.Shift) {
+        // Shift clicking in player inventory puts an empty air item in the view.
+        if (event instanceof ClickInventoryEvent.Shift || event instanceof ClickInventoryEvent.NumberPress || event instanceof ClickInventoryEvent.Double || isClicking) {
             return;
         }
         event.getCause().first(Player.class).ifPresent(player -> {
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
-                    ItemStackSnapshot snapshot = transaction.getOriginal();
-                    // This is the player's inventory
-                    if (slot.getValue() >= 54) {
-                        if (isExecuting) {
-                            return;
-                        }
-                        if (addItem(player, snapshot)) {
-                            participant0Ready = false;
-                            participant1Ready = false;
-                            // Needs to wait for the click to cancel as the slot is momentarily empty when clicked
-                            Sponge.getScheduler().createTaskBuilder().execute(() -> transaction.getSlot().clear()).delayTicks(1).submit(SafeTrade.getPlugin());
-                        }
-                    }
-                    else {
-                        if (snapshot.createStack().equalTo(ItemUtils.getCancelButton())) {
-                            isExecuting = false;
-                            if (player.equals(participants[0])) {
-                                participant0Ready = false;
+                    isClicking = true;
+                    Sponge.getScheduler().createTaskBuilder().execute(() -> {
+                        ItemStackSnapshot snapshot = transaction.getOriginal();
+                        // This is the player's inventory
+                        if (slot.getValue() >= 54) {
+                            if (isExecuting) {
+                                return;
                             }
-                            else {
-                                participant1Ready = false;
+                            if (addItem(player, snapshot)) {
+                                setReady(false);
+                                transaction.getSlot().clear();
                             }
                         }
-                        else if (snapshot.createStack().equalTo(ItemUtils.getExitButton())) {
-                            forceEnd();
-                        }
-                        else if (!isExecuting) {
-                            if (isInSide(player, slot.getValue())) {
-                                // Handles items inside the player's respected trade side
-                                if (isPokemonItem(snapshot.createStack())) {
-                                    participant0Ready = false;
-                                    participant1Ready = false;
-                                    removePokemon(player, snapshot.createStack(), slot.getValue());
-                                }
-                                else {
-                                    if (removeItem(slot.getValue())) {
-                                        participant0Ready = false;
-                                        participant1Ready = false;
-                                        Utils.giveItem(player, snapshot.createStack(), true);
-                                    }
-                                }
-                            }
-                            else if (snapshot.createStack().equalTo(ItemUtils.getAcceptButton())) {
+                        else {
+                            if (snapshot.createStack().equalTo(ItemUtils.getCancelTradeButton())) {
+                                isExecuting = false;
                                 if (player.equals(participants[0])) {
-                                    participant0Ready = true;
+                                    participant0Ready = false;
                                 }
                                 else {
-                                    participant1Ready = true;
-                                }
-                                if (participant0Ready && participant1Ready) {
-                                    executeTrade();
-                                }
-                            }
-                            else if (snapshot.createStack().equalTo(ItemUtils.getResetMoneyButton())) {
-                                participant0Ready = false;
-                                participant1Ready = false;
-                                money.put(player, 0);
-                            }
-                            // Uses for loop to check money items
-                            for (int i = 1; i <= 100000; i *= 10) {
-                                if (snapshot.createStack().equalTo(ItemUtils.getMoneyButton(i))) {
-                                    participant0Ready = false;
                                     participant1Ready = false;
-                                    if (player.equals(participants[0])) {
-                                        int newMoney = money.get(participants[0]);
-                                        newMoney += i;
-                                        money.put(participants[0], newMoney);
+                                }
+                            }
+                            else if (snapshot.createStack().equalTo(ItemUtils.getExitButton())) {
+                                end(TradeResult.CANCELLED);
+                            }
+                            else if (!isExecuting) {
+                                if (isInSide(player, slot.getValue())) {
+                                    // Handles items inside the player's respected trade side
+                                    if (isPokemonItem(snapshot.createStack())) {
+                                        setReady(false);
+                                        removePokemon(player, snapshot.createStack(), slot.getValue());
                                     }
                                     else {
-                                        int newMoney = money.get(participants[1]);
-                                        newMoney += i;
-                                        money.put(participants[1], newMoney);
-                                    }
-                                }
-                            }
-                            // Uses for loop to check slot items
-                            outerloop:
-                            for (int i = 1; i <= 6; i++) {
-                                if (snapshot.createStack().equalTo(ItemUtils.getSlotButton(i))) {
-                                    EntityPixelmon slotPokemon = Utils.getPokemonInSlot(player, i);
-                                    // Prevents adding the same pokemon again
-                                    for (EntityPixelmon pixelmon : listedPokemon.get(player).values()) {
-                                        if (PixelmonMethods.isIDSame(slotPokemon.getPokemonId(), pixelmon.getPokemonId())) {
-                                            break outerloop;
+                                        if (removeItem(slot.getValue())) {
+                                            setReady(false);
+                                            Utils.giveOrStoreSnapshot(player, snapshot, false);
                                         }
                                     }
-                                    if (slotPokemon != null) {
-                                        participant0Ready = false;
-                                        participant1Ready = false;
-                                        addPokemon(player, slotPokemon);
+                                }
+                                else if (snapshot.createStack().equalTo(ItemUtils.getAcceptButton())) {
+                                    if (!isEmpty()) {
+                                        if (player.equals(participants[0])) {
+                                            participant0Ready = true;
+                                        }
+                                        else {
+                                            participant1Ready = true;
+                                        }
+                                        if (participant0Ready && participant1Ready) {
+                                            executeTrade();
+                                        }
+                                    }
+                                }
+                                else if (snapshot.createStack().equalTo(ItemUtils.getResetMoneyButton())) {
+                                    setReady(false);
+                                    money.put(player, 0);
+                                }
+                                // Uses for loop to check money items
+                                for (int i = 1; i <= 100000; i *= 10) {
+                                    if (snapshot.createStack().equalTo(ItemUtils.getMoneyButton(i))) {
+                                        setReady(false);
+                                        if (player.equals(participants[0])) {
+                                            int newMoney = money.get(participants[0]);
+                                            newMoney += i;
+                                            money.put(participants[0], newMoney);
+                                        }
+                                        else {
+                                            int newMoney = money.get(participants[1]);
+                                            newMoney += i;
+                                            money.put(participants[1], newMoney);
+                                        }
+                                    }
+                                }
+                                // Uses for loop to check slot items
+                                outerloop:
+                                for (int i = 1; i <= 6; i++) {
+                                    if (snapshot.createStack().equalTo(ItemUtils.getSlotButton(i))) {
+                                        EntityPixelmon slotPokemon = Utils.getPokemonInSlot(player, i);
+                                        // Prevents adding the same pokemon again
+                                        if (slotPokemon != null) {
+                                            for (EntityPixelmon pixelmon : listedPokemon.get(player).values()) {
+                                                if (PixelmonMethods.isIDSame(slotPokemon.getPokemonId(), pixelmon.getPokemonId())) {
+                                                    break outerloop;
+                                                }
+                                            }
+                                            setReady(false);
+                                            addPokemon(player, slotPokemon);
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    // Don't know why it needs a delay to work
-                    Sponge.getScheduler().createTaskBuilder().execute(this::update).delayTicks(1).submit(SafeTrade.getPlugin());
+                        // TODO: Currently the trade updates every time something is clicked, even if it doesn't need an update.
+                        update();
+                        isClicking = false;
+                    }).delayTicks(1).submit(SafeTrade.getPlugin());
                 });
             });
         });
@@ -720,16 +723,9 @@ public class Trade {
         isExecuting = false;
         // Checks if the player is the cause of the inventory closing (ESC)
         if (event.getCause().first(Player.class).isPresent()) {
-            Player player = event.getCause().first(Player.class).get();
             // Schedular prevents a disgusting sponge phase error that I'm guessing is due to attempting to close the inventory during the close inventory event.
             Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                if (player.equals(participants[0])) {
-                    participants[1].closeInventory();
-                }
-                else {
-                    participants[0].closeInventory();
-                }
-                end();
+                end(TradeResult.CANCELLED);
             }).delayTicks(1).submit(SafeTrade.getPlugin());
         }
     }

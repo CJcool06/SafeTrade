@@ -1,4 +1,4 @@
-package io.github.cjcool06.safetrade.api.events.item;
+package io.github.cjcool06.safetrade.api.events.trade;
 
 import io.github.cjcool06.safetrade.obj.Trade;
 import net.minecraftforge.fml.common.eventhandler.Cancelable;

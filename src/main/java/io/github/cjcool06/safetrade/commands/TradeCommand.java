@@ -1,6 +1,7 @@
 package io.github.cjcool06.safetrade.commands;
 
 import io.github.cjcool06.safetrade.SafeTrade;
+import io.github.cjcool06.safetrade.managers.DataManager;
 import io.github.cjcool06.safetrade.obj.Trade;
 import io.github.cjcool06.safetrade.utils.Utils;
 import org.spongepowered.api.Sponge;
@@ -32,7 +33,11 @@ public class TradeCommand implements CommandExecutor {
                 .arguments(GenericArguments.optional(GenericArguments.player(Text.of("target"))))
                 .executor(new TradeCommand())
                 .child(EndTradeCommand.getSpec(), "end")
-                .child(ItemsCommand.getSpec(), "items")
+                .child(StorageCommand.getSpec(), "storage")
+                .child(FindCommand.getSpec(), "find")
+                .child(LogsCommand.getSpec(), "logs")
+                //.child(TestCommand.getSpec(), "test")
+                .child(ReloadCommand.getSpec(), "reload")
                 .build();
     }
 
@@ -41,11 +46,14 @@ public class TradeCommand implements CommandExecutor {
             List<Text> contents = new ArrayList<>();
 
             contents.add(Text.of(TextColors.AQUA, "/safetrade <player>", TextColors.GRAY, " - ", TextColors.GRAY, "Request a safe trade"));
+            contents.add(Text.of(TextColors.AQUA, "/safetrade find", TextColors.GRAY, " - ", TextColors.GRAY, "Opens GUI"));
             contents.add(Text.of(TextColors.AQUA, "/safetrade end <player>", TextColors.GRAY, " - ", TextColors.GRAY, "Force end a trade"));
-            contents.add(Text.of(TextColors.AQUA, "/safetrade items <add | clear | list> <player>", TextColors.GRAY, " - ", TextColors.GRAY, "Manipulate a player's SafeTrade storage"));
+            contents.add(Text.of(TextColors.AQUA, "/safetrade logs <user>", TextColors.GRAY, " - ", TextColors.GRAY, "Browse a player's trade logs"));
+            contents.add(Text.of(TextColors.AQUA, "/safetrade storage <add | clear | list> <user>", TextColors.GRAY, " - ", TextColors.GRAY, "Manipulate a player's SafeTrade storage"));
+            contents.add(Text.of(TextColors.AQUA, "/safetrade reload", TextColors.GRAY, " - ", TextColors.GRAY, "Reloads config"));
 
             PaginationList.builder()
-                    .title(Text.of(TextColors.DARK_AQUA, " SafeTrade "))
+                    .title(Text.of(TextColors.GREEN, " SafeTrade "))
                     .contents(contents)
                     .padding(Text.of(TextColors.AQUA, "-", TextColors.RESET))
                     .sendTo(src);
@@ -56,19 +64,19 @@ public class TradeCommand implements CommandExecutor {
             Player target = args.<Player>getOne("target").get();
 
             if (player.equals(target)) {
-                player.sendMessage(Text.of(TextColors.RED, "You can't safe trade with yourself, dummy."));
+                player.sendMessage(Text.of(TextColors.RED, "You can't SafeTrade with yourself, dummy."));
                 return CommandResult.success();
             }
-            if (SafeTrade.getTrade(player) != null) {
-                player.sendMessage(Text.of(TextColors.RED, "You are already involved in a safe trade."));
+            if (DataManager.getTrade(player) != null) {
+                player.sendMessage(Text.of(TextColors.RED, "You are already involved in a SafeTrade."));
                 return CommandResult.success();
             }
-            if (SafeTrade.getTrade(target) != null) {
+            if (DataManager.getTrade(target) != null) {
                 player.sendMessage(Text.of(TextColors.RED, "That player is currently safe trading with another player."));
                 return CommandResult.success();
             }
             if (tradeRequests.containsKey(player) && tradeRequests.get(player).contains(target)) {
-                player.sendMessage(Text.of(TextColors.RED, "There is already a safe trade request pending with that player. Requests expire after 2 minutes."));
+                player.sendMessage(Text.of(TextColors.RED, "There is already a SafeTrade request pending with that player. Requests expire after 2 minutes."));
                 return CommandResult.success();
             }
             // Catches if the requestee uses the command to trade instead of using the executable.
@@ -80,7 +88,7 @@ public class TradeCommand implements CommandExecutor {
             requestTrade(player, target);
         }
         else {
-            src.sendMessage(Text.of(TextColors.RED, "You must be a player to trade!"));
+            src.sendMessage(Text.of(TextColors.RED, "You must be a player to SafeTrade!"));
         }
 
         return CommandResult.success();
@@ -88,8 +96,9 @@ public class TradeCommand implements CommandExecutor {
 
     public static void requestTrade(Player requester, Player requestee) {
         requestee.sendMessage(Text.of(TextColors.DARK_AQUA, requester.getName(), TextColors.GRAY, " has requested a safe trade. ",
-                Text.of(TextColors.GREEN, TextActions.executeCallback(src -> acceptInvitation(requester, requestee)), "[Accept]"),
-                " ", Text.of(TextColors.RED, TextActions.executeCallback(src -> rejectInvitation(requester, requestee)), "[Decline]")));
+                Text.of(TextColors.GREEN, TextActions.executeCallback(dummySrc -> acceptInvitation(requester, requestee)), "[Accept]"),
+                " ",
+                Text.of(TextColors.RED, TextActions.executeCallback(dummySrc -> rejectInvitation(requester, requestee)), "[Decline]")));
 
         if (!tradeRequests.containsKey(requester)) {
             tradeRequests.put(requester, new ArrayList<>());

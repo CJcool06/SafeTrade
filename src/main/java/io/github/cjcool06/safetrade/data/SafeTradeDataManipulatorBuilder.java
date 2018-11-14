@@ -8,10 +8,12 @@ import org.spongepowered.api.data.persistence.InvalidDataException;
 
 import java.util.Optional;
 
+@Deprecated
 public class SafeTradeDataManipulatorBuilder extends AbstractDataBuilder<SafeTradeData> implements DataManipulatorBuilder<SafeTradeData, ImmutableSafeTradeData> {
     public SafeTradeDataManipulatorBuilder() {
-        super(SafeTradeData.class, 1);
+        super(SafeTradeData.class, 2);
     }
+
     @Override
     public SafeTradeData create() {
         return new SafeTradeData();

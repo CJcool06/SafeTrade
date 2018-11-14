@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+@Deprecated
 public class SafeTradeData extends AbstractData<SafeTradeData, ImmutableSafeTradeData> {
     private List<ItemStackSnapshot> pendingItems;
 
@@ -71,9 +72,7 @@ public class SafeTradeData extends AbstractData<SafeTradeData, ImmutableSafeTrad
     }
 
     public Optional<SafeTradeData> from(DataView view) {
-        view.getSerializableList(SafeTradeKeys.PENDING_ITEMS.getQuery(), ItemStackSnapshot.class).ifPresent(pendingItems -> {
-            this.pendingItems.addAll(pendingItems);
-        });
+        view.getSerializableList(SafeTradeKeys.PENDING_ITEMS.getQuery(), ItemStackSnapshot.class).ifPresent(pendingItems -> this.pendingItems.addAll(pendingItems));
         return Optional.of(this);
     }
 

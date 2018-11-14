@@ -9,6 +9,7 @@ import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 
+@Deprecated
 public class ImmutableSafeTradeData extends AbstractImmutableData<ImmutableSafeTradeData, SafeTradeData> {
     private List<ItemStackSnapshot> pendingItems;
 
