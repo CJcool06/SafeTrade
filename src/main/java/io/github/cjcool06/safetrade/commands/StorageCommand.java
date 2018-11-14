@@ -64,7 +64,7 @@ public class StorageCommand implements CommandExecutor {
             }).async().submit(SafeTrade.getPlugin());
         }
         else if (operation.equalsIgnoreCase("list")) {
-            src.sendMessage(Text.of(TextColors.GOLD, user.getName() + "'s SafeTrade Storagee:"));
+            src.sendMessage(Text.of(TextColors.GOLD, user.getName() + "'s SafeTrade Storage:"));
             Sponge.getScheduler().createTaskBuilder().execute(() -> {
                 for (ItemStackSnapshot snapshot : DataManager.getStoredItems(user)) {
                     src.sendMessage(Text.of(TextColors.GREEN, snapshot.getQuantity() + "x ", TextColors.AQUA, snapshot.getTranslation().get()));
