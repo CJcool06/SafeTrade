@@ -47,7 +47,7 @@ import java.util.concurrent.TimeUnit;
 public class SafeTrade {
     public static final String ID = "safetrade";
     public static final String NAME = "SafeTrade";
-    public static final String VERSION = "1.1.6";
+    public static final String VERSION = "1.2.0";
     public static final String DESCRIPTION = "Trade Pokemon and items safely";
     public static final String AUTHORS = "CJcool06";
     public static final EventBus EVENT_BUS = new EventBus();
