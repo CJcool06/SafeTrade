@@ -43,7 +43,7 @@ public class Config {
         try {
             node.getNode("Prefix").setValue(prefix);
             node.getNode("ShowEggStats").setValue(showEggStats);
-            node.getNode("HideEggName").setValue(showEggName);
+            node.getNode("ShowEggName").setValue(showEggName);
             node.getNode("GarbageCollector", "Logs", "Enabled").setValue(gcLogsEnabled);
             node.getNode("GarbageCollector", "Logs", "ExpiryTime").setValue(gcLogsExpiryTime);
             loader.save(node);
