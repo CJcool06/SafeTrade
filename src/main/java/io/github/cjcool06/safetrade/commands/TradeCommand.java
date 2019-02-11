@@ -50,9 +50,10 @@ public class TradeCommand implements CommandExecutor {
             List<Text> contents = new ArrayList<>();
 
             contents.add(Text.of(TextColors.AQUA, "/safetrade <player>", TextColors.GRAY, " - ", TextColors.GRAY, "Request a SafeTrade"));
-            contents.add(Text.of(TextColors.AQUA, "/safetrade end <player>", TextColors.GRAY, " - ", TextColors.GRAY, "Force end a trade"));
-            contents.add(Text.of(TextColors.AQUA, "/safetrade view <player>", TextColors.GRAY, " - ", TextColors.GRAY, "View a player's trade"));
-            contents.add(Text.of(TextColors.AQUA, "/safetrade logs <user> [other user]", TextColors.GRAY, " - ", TextColors.GRAY, "Browse a player's trade logs"));
+            contents.add(Text.of(TextColors.AQUA, "/safetrade open", TextColors.GRAY, " - ", TextColors.GRAY, "Open your current SafeTrade"));
+            contents.add(Text.of(TextColors.AQUA, "/safetrade end <player>", TextColors.GRAY, " - ", TextColors.GRAY, "Force end a SafeTrade"));
+            contents.add(Text.of(TextColors.AQUA, "/safetrade view <player>", TextColors.GRAY, " - ", TextColors.GRAY, "View a player's SafeTrade"));
+            contents.add(Text.of(TextColors.AQUA, "/safetrade logs <user> [other user]", TextColors.GRAY, " - ", TextColors.GRAY, "Browse a player's SafeTrade logs"));
             contents.add(Text.of(TextColors.AQUA, "/safetrade storage <user> <add | clear | list>", TextColors.GRAY, " - ", TextColors.GRAY, "Manipulate a player's SafeTrade storage"));
             contents.add(Text.of(TextColors.AQUA, "/safetrade reload", TextColors.GRAY, " - ", TextColors.GRAY, "Reloads config"));
 
