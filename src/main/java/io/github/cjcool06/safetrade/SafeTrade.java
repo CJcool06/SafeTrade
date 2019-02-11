@@ -1,9 +1,11 @@
 package io.github.cjcool06.safetrade;
 
 import com.google.inject.Inject;
+import com.pixelmonmod.pixelmon.Pixelmon;
 import io.github.cjcool06.safetrade.commands.TradeCommand;
 import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.listeners.ConnectionListener;
+import io.github.cjcool06.safetrade.listeners.EvolutionListener;
 import io.github.cjcool06.safetrade.listeners.TradeCreationListener;
 import io.github.cjcool06.safetrade.listeners.ViewerConnectionListener;
 import io.github.cjcool06.safetrade.managers.DataManager;
@@ -70,6 +72,8 @@ public class SafeTrade {
         plugin = this;
 
         Sponge.getEventManager().registerListeners(this, new ConnectionListener());
+
+        Pixelmon.EVENT_BUS.register(new EvolutionListener());
 
         EVENT_BUS.register(new TradeCreationListener());
         EVENT_BUS.register(new ViewerConnectionListener());
