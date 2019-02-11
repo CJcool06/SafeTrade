@@ -1,5 +1,7 @@
 package io.github.cjcool06.safetrade.obj;
 
+import com.pixelmonmod.pixelmon.entities.pixelmon.EntityPixelmon;
+import com.pixelmonmod.pixelmon.enums.EnumSpecies;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.InventoryType;
 import io.github.cjcool06.safetrade.api.enums.TradeResult;
@@ -9,9 +11,11 @@ import io.github.cjcool06.safetrade.api.events.trade.TradeCreationEvent;
 import io.github.cjcool06.safetrade.api.events.trade.TradeEvent;
 import io.github.cjcool06.safetrade.channels.TradeChannel;
 import io.github.cjcool06.safetrade.helpers.InventoryHelper;
+import io.github.cjcool06.safetrade.listeners.EvolutionListener;
 import io.github.cjcool06.safetrade.trackers.Tracker;
 import io.github.cjcool06.safetrade.utils.ItemUtils;
 import io.github.cjcool06.safetrade.utils.LogUtils;
+import net.minecraft.entity.player.EntityPlayerMP;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.type.DyeColors;
 import org.spongepowered.api.entity.living.player.Player;
@@ -175,12 +179,34 @@ public class Trade {
 
         side0.getPlayer().ifPresent(player -> {
             storage0.giveItems();
-            storage0.givePokemon();
+            storage0.givePokemon().forEach(pokemon -> {
+                // Requires tick delay otherwise the player will become glitched
+                Sponge.getScheduler().createTaskBuilder().execute(() -> {
+                    EntityPixelmon pixelmon = pokemon.getOrSpawnPixelmon((EntityPlayerMP)player);
+                    if (pixelmon.testTradeEvolution(EnumSpecies.Abomasnow)) {
+                        EvolutionListener.ongoingEvolutions.add(pixelmon.getUniqueID());
+                    }
+                    else {
+                        pixelmon.unloadEntity();
+                    }
+                }).delayTicks(20).submit(SafeTrade.getPlugin());
+            });
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
         side1.getPlayer().ifPresent(player -> {
             storage1.giveItems();
-            storage1.givePokemon();
+            storage1.givePokemon().forEach(pokemon -> {
+                // Requires tick delay otherwise the player will become glitched
+                Sponge.getScheduler().createTaskBuilder().execute(() -> {
+                    EntityPixelmon pixelmon = pokemon.getOrSpawnPixelmon((EntityPlayerMP)player);
+                    if (pixelmon.testTradeEvolution(EnumSpecies.Abomasnow)) {
+                        EvolutionListener.ongoingEvolutions.add(pixelmon.getUniqueID());
+                    }
+                    else {
+                        pixelmon.unloadEntity();
+                    }
+                }).delayTicks(20).submit(SafeTrade.getPlugin());
+            });
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
         SafeTrade.EVENT_BUS.post(new TradeEvent.Executed.SuccessfulTrade(this, TradeResult.SUCCESS));
@@ -310,7 +336,7 @@ public class Trade {
                     Side side = optSide.get();
                     Side otherSide = optSide.get().getOtherSide();
 
-                    if (item.equalTo(ItemUtils.Main.getReady()) && state ==  TradeState.TRADING) {
+                    if (item.equalTo(ItemUtils.Main.getReady()) && state == TradeState.TRADING) {
                         side.setReady(true);
                         side.vault.setLocked(true);
                         Sponge.getScheduler().createTaskBuilder().execute(() -> {
@@ -324,15 +350,15 @@ public class Trade {
                             }
                         }).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
-                    else if (item.equalTo(ItemUtils.Main.getNotReady()) && state ==  TradeState.TRADING) {
+                    else if (item.equalTo(ItemUtils.Main.getNotReady()) && state == TradeState.TRADING) {
                         side.setReady(false);
                         side.vault.setLocked(false);
                         Sponge.getScheduler().createTaskBuilder().execute(this::reformatInventory).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
-                    else if (item.equalTo(ItemUtils.Main.getPause()) && state ==  TradeState.TRADING) {
-                        side.changeInventory(InventoryType.NONE);
+                    else if (item.equalTo(ItemUtils.Main.getPause()) && state == TradeState.TRADING) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventory(InventoryType.NONE)).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
-                    else if (item.equalTo(ItemUtils.Main.getQuit()) && state ==  TradeState.TRADING) {
+                    else if (item.equalTo(ItemUtils.Main.getQuit()) && state == TradeState.TRADING) {
                         Sponge.getScheduler().createTaskBuilder().execute(this::forceEnd).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Main.getMoneyStorage(side))) {
