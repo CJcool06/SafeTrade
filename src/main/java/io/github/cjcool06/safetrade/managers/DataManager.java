@@ -1,57 +1,142 @@
 package io.github.cjcool06.safetrade.managers;
 
 import com.google.common.reflect.TypeToken;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.obj.Log;
-import io.github.cjcool06.safetrade.obj.Trade;
+import io.github.cjcool06.safetrade.obj.PlayerStorage;
+import io.github.cjcool06.safetrade.trackers.Tracker;
 import io.github.cjcool06.safetrade.utils.Utils;
 import ninja.leaping.configurate.ConfigurationOptions;
 import ninja.leaping.configurate.commented.CommentedConfigurationNode;
 import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
 import ninja.leaping.configurate.loader.ConfigurationLoader;
-import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
-import org.spongepowered.api.item.inventory.ItemStack;
-import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 
 import java.io.File;
+import java.io.FileReader;
+import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/**
- * Any method related to reading/writing to files should be called asynchronously
- */
-public class DataManager {
-    private static final File dataDir = new File("config/safetrade/data");
-    private static final ArrayList<Trade> activeTrades = new ArrayList<>();
+public final class DataManager {
+    public static final File dataDir = new File("config/safetrade/data");
+    //public static final File activeDir = new File("config/safetrade/data/active");
+    //public static final File endedDir = new File("config/safetrade/data/inactive");
+    public static final File storageDir = new File("config/safetrade/data/player-storage");
+    public static final File logsDir = new File("config/safetrade/data/logs");
 
     public static void load() {
         dataDir.mkdirs();
-        for (File file : dataDir.listFiles()) {
-            if (isFileEmpty(file)) {
-                file.delete();
-                continue;
+        storageDir.mkdirs();
+        logsDir.mkdirs();
+        JsonParser parser = new JsonParser();
+        File currentFile = null;
+
+        try {
+            List<File> emptyFiles = new ArrayList<>();
+
+            for (File file : storageDir.listFiles()) {
+                currentFile = file;
+                JsonObject jsonObject = (JsonObject)parser.parse(new FileReader(file));
+                PlayerStorage storage = PlayerStorage.fromContainer(jsonObject);
+
+                // If the PlayerStorage is empty, the file will be deleted and not added to the cache
+                if (storage.isEmpty()) {
+                    emptyFiles.add(file);
+                }
+                else {
+                    Tracker.addStorage(storage);
+                }
             }
-            try {
-                // TODO
-            } catch (Exception e) {
-                SafeTrade.getLogger().error("Error reading file " + file.getName());
-                SafeTrade.getLogger().error(e.getMessage());
+            for (File emptyFile : emptyFiles) {
+                emptyFile.delete();
+            }
+
+            /* todo: Future support for trade persistence
+
+            for (File file : activeDir.listFiles()) {
+                currentFile = file;
+                JsonObject jsonObject = (JsonObject)parser.parse(new FileReader(file));
+                Trade trade = Trade.fromContainer(jsonObject);
+                Tracker.addActiveTrade(trade);
+            }
+            for (File file : endedDir.listFiles()) {
+                currentFile = file;
+                JsonObject jsonObject = (JsonObject)parser.parse(new FileReader(file));
+                Trade trade = Trade.fromContainer(jsonObject);
+                Tracker.addEndedTrade(trade, false);
+            }*/
+        } catch (Exception e) {
+            SafeTrade.getLogger().error("Error reading file: " + (currentFile != null ? currentFile.getName() : "None"));
+            SafeTrade.getLogger().error(e.getMessage());
+        }
+    }
+
+    public static void save() {
+        // todo: Future support for trade persistence
+        /*
+        for (Trade trade : Tracker.getAllActiveTrades()) {
+            saveTrade(trade, activeDir);
+        }*/
+        for (PlayerStorage storage : Tracker.getStorages()) {
+            if (storage.needsSaving()) {
+                storage.save();
             }
         }
     }
 
-    public static void trimFiles() {
-        for (File file : dataDir.listFiles()) {
-            if (isFileEmpty(file)) {
-                file.delete();
-            }
+    public static void savePlayerStorage(PlayerStorage storage) {
+        JsonObject storageObject = new JsonObject();
+        storage.toContainer(storageObject);
+
+        try {
+            File file = new File(storageDir, storage.playerUUID + ".json");
+            PrintWriter pw = new PrintWriter(file);
+            String objString = new GsonBuilder().setPrettyPrinting().create().toJson(storageObject);
+            pw.print(objString);
+            pw.flush();
+            pw.close();
+        } catch (Exception e) {
+            SafeTrade.getLogger().warn("Error saving the PlayerStorage of a player:  UUID=" + storage.playerUUID.toString());
+            e.printStackTrace();
         }
     }
+
+    // todo: Future support for trade persistence
+    /*
+    public static void saveTrade(Trade trade, File dir) {
+        JsonObject tradeObj = new JsonObject();
+        trade.toContainer(tradeObj);
+
+        try {
+            File file = new File(dir, trade.getId() + ".json");
+            PrintWriter pw = new PrintWriter(file);
+            String objString = new GsonBuilder().setPrettyPrinting().create().toJson(tradeObj);
+            pw.print(objString);
+            pw.flush();
+            pw.close();
+        } catch (Exception e) {
+            SafeTrade.getLogger().warn("Error saving a Trade:  ID=" + trade.getId());
+            e.printStackTrace();
+        }
+    }*/
+
+    public static void deletePlayerStorageFile(PlayerStorage storage) {
+        new File(storageDir, storage.playerUUID + ".json").delete();
+    }
+
+    // todo: Future support for trade persistence
+    /*
+    public static void deleteTradeFile(Trade trade, File dir) {
+        new File(dir, trade.getId() + ".json").delete();
+    }*/
 
     public static void addLog(User user, Log log) {
         File file = getFile(user);
@@ -120,107 +205,9 @@ public class DataManager {
         return logs;
     }
 
-    public static void storeItem(User user, ItemStackSnapshot item) {
-        File file = getFile(user);
-        try {
-            ConfigurationLoader<CommentedConfigurationNode> loader = getLoader(file);
-            CommentedConfigurationNode node = loader.load();
-            ArrayList<ItemStackSnapshot> items = getStoredItems(user);
-            items.add(item);
-            node.getNode("items").setValue(new TypeToken<List<ItemStackSnapshot>>(){}, items);
-            loader.save(node);
-        } catch (Exception e) {
-            SafeTrade.getLogger().error("Error adding item to storage. Offending file: " + file.getName());
-            e.printStackTrace();
-        }
-    }
-
-    public static void storeItems(User user, List<ItemStack> items) {
-        ArrayList<ItemStackSnapshot> snapshots = new ArrayList<>();
-        for (ItemStack item : items) {
-            snapshots.add(item.createSnapshot());
-        }
-        storeItemSnapshots(user, snapshots);
-    }
-
-    public static void storeItemSnapshots(User user, List<ItemStackSnapshot> items) {
-        File file = getFile(user);
-        try {
-            ConfigurationLoader<CommentedConfigurationNode> loader = getLoader(file);
-            CommentedConfigurationNode node = loader.load();
-            ArrayList<ItemStackSnapshot> storedItems = getStoredItems(user);
-            storedItems.addAll(items);
-            node.getNode("items").setValue(new TypeToken<List<ItemStackSnapshot>>(){}, storedItems);
-            loader.save(node);
-        } catch (Exception e) {
-            SafeTrade.getLogger().error("Error adding item snapshot to storage. Offending file: " + file.getName());
-            e.printStackTrace();
-        }
-    }
-
-    // TODO: Doesn't work - figure out a way to fix this eventually
-    /*
-    public static void removeItem(User user, ItemStackSnapshot item) {
-        File file = getFile(user);
-        if (file.exists()) {
-            try {
-                ConfigurationLoader<CommentedConfigurationNode> loader = getLoader(file);
-                CommentedConfigurationNode node = loader.load();
-                ArrayList<ItemStackSnapshot> storedItems = getStoredItems(user);
-                Iterator<ItemStackSnapshot> iter = storedItems.iterator();
-                while (iter.hasNext()) {
-                    if (iter.next().createStack().equalTo(item.createStack())) {
-                        iter.remove();
-                        break;
-                    }
-                }
-                node.getNode("items").setValue(new TypeToken<List<ItemStackSnapshot>>(){}, storedItems);
-                loader.save(node);
-            } catch (Exception e) {
-                SafeTrade.getLogger().error("Error removing item from storage. Offending file: " + file.getName());
-                e.printStackTrace();
-            }
-        }
-    }*/
-
-    public static void clearStoredItems(User user) {
-        File file = getFile(user);
-        if (file.exists()) {
-            try {
-                ConfigurationLoader<CommentedConfigurationNode> loader = getLoader(file);
-                CommentedConfigurationNode node = loader.load();
-                node.getNode("items").setValue(new TypeToken<List<ItemStackSnapshot>>(){}, new ArrayList<>());
-                loader.save(node);
-            } catch (Exception e) {
-                SafeTrade.getLogger().error("Error clearing item storage. Offending file: " + file.getName());
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public static ArrayList<ItemStackSnapshot> getStoredItems(User user) {
-        ArrayList<ItemStackSnapshot> items = new ArrayList<>();
-        File file = getFile(user);
-        if (file.exists()) {
-            try {
-                ConfigurationLoader<CommentedConfigurationNode> loader = getLoader(file);
-                CommentedConfigurationNode node = loader.load();
-                if (node.getNode("items").isVirtual()) {
-                    return items;
-                }
-                items.addAll(node.getNode("items").getList(new TypeToken<ItemStackSnapshot>(){}));
-            } catch (Exception e) {
-                SafeTrade.getLogger().error("Error retrieving items from storage. Offending file: " + file.getName());
-                e.printStackTrace();
-            }
-        }
-
-        return items;
-    }
-
     public static int recycleLogs() {
         int count = 0;
-        for (File file : dataDir.listFiles()) {
+        for (File file : logsDir.listFiles()) {
             ArrayList<Log> logs = new ArrayList<>();
             if (file.exists()) {
                 try {
@@ -263,35 +250,12 @@ public class DataManager {
         return count;
     }
 
-    public static ArrayList<Trade> getActiveTrades() {
-        return new ArrayList<>(activeTrades);
-    }
-
-    public static Trade getTrade(Player player) {
-        for (Trade trade : activeTrades) {
-            if (trade.hasPlayer(player)) {
-                return trade;
-            }
-        }
-
-        return null;
-    }
-
-    public static void addTrade(Trade trade) {
-        activeTrades.add(trade);
-    }
-
-    public static void removeTrade(Trade trade) {
-        activeTrades.remove(trade);
-    }
-
-
     public static ConfigurationLoader<CommentedConfigurationNode> getLoader(File file) {
         return HoconConfigurationLoader.builder().setFile(file).build();
     }
 
     public static File getFile(User user) {
-        return new File(dataDir, user.getUniqueId() + ".hocon");
+        return new File(logsDir, user.getUniqueId() + ".hocon");
     }
 
     private static boolean isFileEmpty(File file) {
