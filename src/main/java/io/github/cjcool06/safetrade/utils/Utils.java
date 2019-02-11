@@ -1,89 +1,48 @@
 package io.github.cjcool06.safetrade.utils;
 
+import com.pixelmonmod.pixelmon.Pixelmon;
+import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
 import com.pixelmonmod.pixelmon.api.pokemon.PokemonSpec;
+import com.pixelmonmod.pixelmon.api.storage.PCStorage;
 import com.pixelmonmod.pixelmon.battles.BattleRegistry;
 import com.pixelmonmod.pixelmon.battles.controller.BattleControllerBase;
-import com.pixelmonmod.pixelmon.config.PixelmonEntityList;
-import com.pixelmonmod.pixelmon.config.PixelmonItems;
 import com.pixelmonmod.pixelmon.entities.pixelmon.EntityPixelmon;
-import com.pixelmonmod.pixelmon.storage.PixelmonStorage;
-import com.pixelmonmod.pixelmon.storage.PlayerStorage;
-import com.pixelmonmod.pixelmon.util.helpers.SpriteHelper;
-import io.github.cjcool06.safetrade.SafeTrade;
-import io.github.cjcool06.safetrade.api.enquiry.ListingBase;
+import com.pixelmonmod.pixelmon.items.ItemPixelmonSprite;
+import com.pixelmonmod.pixelmon.storage.PlayerPartyStorage;
 import io.github.cjcool06.safetrade.config.Config;
-import io.github.cjcool06.safetrade.listings.PokemonListing;
-import io.github.cjcool06.safetrade.managers.DataManager;
-import io.github.cjcool06.safetrade.obj.Trade;
+import io.github.cjcool06.safetrade.obj.Side;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
 import org.spongepowered.api.Sponge;
-import org.spongepowered.api.data.key.Keys;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
-import org.spongepowered.api.item.inventory.Inventory;
 import org.spongepowered.api.item.inventory.ItemStack;
-import org.spongepowered.api.item.inventory.ItemStackSnapshot;
-import org.spongepowered.api.item.inventory.entity.Hotbar;
-import org.spongepowered.api.item.inventory.entity.MainPlayerInventory;
-import org.spongepowered.api.item.inventory.query.QueryOperationTypes;
-import org.spongepowered.api.item.inventory.transaction.InventoryTransactionResult;
 import org.spongepowered.api.service.user.UserStorageService;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.action.TextActions;
 import org.spongepowered.api.text.format.TextColors;
-import org.spongepowered.api.text.format.TextStyles;
 
+import javax.annotation.Nullable;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 public class Utils {
     public static Optional<User> getUser(UUID uuid) {
         return Sponge.getServiceManager().provide(UserStorageService.class).get().get(uuid);
     }
 
-    public static EntityPixelmon getPokemonInSlot(Player player, int slot) {
-        PlayerStorage storage = PixelmonStorage.pokeBallManager.getPlayerStorage((EntityPlayerMP)player).get();
-        if (storage.partyPokemon[slot - 1] != null) {
-            return (EntityPixelmon)PixelmonEntityList.createEntityFromNBT(storage.partyPokemon[slot - 1], (World)player.getWorld());
-            // Doesn't work
-            //return new PokemonSpec().readFromNBT(storage.partyPokemon[slot - 1]).create((World)player.getWorld());
-        }
-
-        return null;
+    @Nullable
+    public static Pokemon getPokemonInSlot(Player player, int slot) {
+        return Pixelmon.storageManager.getParty((EntityPlayerMP)player).get(slot);
     }
 
-    public static ItemStack getPicture(EntityPixelmon pokemon) {
-        net.minecraft.item.ItemStack item = new net.minecraft.item.ItemStack(PixelmonItems.itemPixelmonSprite);
-        NBTTagCompound nbt = new NBTTagCompound();
-        String idValue = String.format("%03d", pokemon.baseStats.nationalPokedexNumber);
-        if (pokemon.isEgg) {
-            switch(pokemon.getSpecies()) {
-                case Manaphy:
-                case Togepi:
-                    nbt.setString("SpriteName", String.format("pixelmon:sprites/eggs/%s1", pokemon.getSpecies().name.toLowerCase()));
-                    break;
-                default:
-                    nbt.setString("SpriteName", "pixelmon:sprites/eggs/egg1");
-            }
-        } else if (pokemon.getIsShiny()) {
-            nbt.setString("SpriteName", "pixelmon:sprites/shinypokemon/" + idValue + SpriteHelper.getSpriteExtra(pokemon.getSpecies().name, pokemon.getForm()));
-        } else {
-            nbt.setString("SpriteName", "pixelmon:sprites/pokemon/" + idValue + SpriteHelper.getSpriteExtra(pokemon.getSpecies().name, pokemon.getForm()));
-        }
-        item.setTagCompound(nbt);
-        return (ItemStack)(Object)item;
+    public static ItemStack getPicture(Pokemon pokemon) {
+        return (ItemStack)(Object)ItemPixelmonSprite.getPhoto(pokemon);
     }
-
-    public static Text[] getTradeOverviewLore(Trade trade) {
+/*
+    public static Text[] getTradeOverviewLore(DeprecatedTrade trade) {
         Text.Builder builder1 =  Text.builder();
         Text.Builder builder2 = Text.builder();
 
@@ -133,7 +92,7 @@ public class Utils {
         return new Text[]{builder1.build(), builder2.build()};
     }
 
-    public static Text getSuccessMessage(Trade trade) {
+    public static Text getSuccessMessage(DeprecatedTrade trade) {
         Text[] texts = getTradeOverviewLore(trade);
 
         return Text.builder("SafeTrade Overview >> ")
@@ -148,50 +107,50 @@ public class Utils {
                         .onHover(TextActions.showText(texts[1]))
                         .build())
                 .build();
-    }
+    }*/
 
-    public static ArrayList<Text> getPokemonLore(EntityPixelmon pokemon) {
+    public static ArrayList<Text> getPokemonLore(Pokemon pokemon) {
         ArrayList<Text> lore = new ArrayList<>();
-        if (pokemon.isEgg && !Config.showEggStats) {
+        if (pokemon.isEgg() && !Config.showEggStats) {
             lore.add(Text.of(TextColors.GRAY, "The stats of this egg are a mystery."));
             return lore;
         }
         DecimalFormat df = new DecimalFormat("#0.##");
-        int ivSum = pokemon.stats.ivs.HP + pokemon.stats.ivs.Attack + pokemon.stats.ivs.Defence + pokemon.stats.ivs.SpAtt + pokemon.stats.ivs.SpDef + pokemon.stats.ivs.Speed;
-        int evSum = pokemon.stats.evs.hp + pokemon.stats.evs.attack + pokemon.stats.evs.defence + pokemon.stats.evs.specialAttack + pokemon.stats.evs.specialDefence + pokemon.stats.evs.speed;
+        int ivSum = pokemon.getStats().ivs.hp + pokemon.getStats().ivs.attack + pokemon.getStats().ivs.defence + pokemon.getStats().ivs.specialAttack + pokemon.getStats().ivs.specialDefence + pokemon.getStats().ivs.speed;
+        int evSum = pokemon.getStats().evs.hp + pokemon.getStats().evs.attack + pokemon.getStats().evs.defence + pokemon.getStats().evs.specialAttack + pokemon.getStats().evs.specialDefence + pokemon.getStats().evs.speed;
         // Stats
         //String star = "\u2605";
-        String nickname = pokemon.getNickname().equals("") ? pokemon.getName() : pokemon.getNickname();
+        String nickname = pokemon.getNickname() == null ? pokemon.getSpecies().getLocalizedName() : pokemon.getNickname();
         //String shiny = pokemon.getIsShiny() ? star : "";
-        String shiny = pokemon.getIsShiny() ? "Yes" : "No";
-        int level = pokemon.getLvl().getLevel();
+        String shiny = pokemon.isShiny() ? "Yes" : "No";
+        int level = pokemon.getLevel();
         String nature = pokemon.getNature().getLocalizedName();
         String growth = pokemon.getGrowth().getLocalizedName();
         String ability = pokemon.getAbility().getLocalizedName();
-        String originalTrainer = pokemon.originalTrainer;
+        String originalTrainer = pokemon.getOriginalTrainer();
         String heldItem = "";
-        if(!pokemon.getItemHeld().getLocalizedName().contains(".name")) {
-            heldItem += pokemon.getItemHeld().getLocalizedName();
+        if(pokemon.getHeldItem() != net.minecraft.item.ItemStack.EMPTY) {
+            heldItem += pokemon.getHeldItem().getDisplayName();
         }
         else {
             heldItem += "None";
         }
         String breedable = new PokemonSpec("unbreedable").matches(pokemon) ? "No" : "Yes";
         // EVs
-        int hpEV = pokemon.stats.evs.hp;
-        int attackEV = pokemon.stats.evs.attack;
-        int defenceEV = pokemon.stats.evs.defence;
-        int spAttkEV = pokemon.stats.evs.specialAttack;
-        int spDefEV = pokemon.stats.evs.specialDefence;
-        int speedEV = pokemon.stats.evs.speed;
+        int hpEV = pokemon.getStats().evs.hp;
+        int attackEV = pokemon.getStats().evs.attack;
+        int defenceEV = pokemon.getStats().evs.defence;
+        int spAttkEV = pokemon.getStats().evs.specialAttack;
+        int spDefEV = pokemon.getStats().evs.specialDefence;
+        int speedEV = pokemon.getStats().evs.speed;
         String totalEVs = df.format((long)((int)((double)evSum / 510.0D * 100.0D))) + "%";
         // IVs
-        int hpIV = pokemon.stats.ivs.HP;
-        int attackIV = pokemon.stats.ivs.Attack;
-        int defenceIV = pokemon.stats.ivs.Defence;
-        int spAttkIV = pokemon.stats.ivs.SpAtt;
-        int spDefIV = pokemon.stats.ivs.SpDef;
-        int speedIV = pokemon.stats.ivs.Speed;
+        int hpIV = pokemon.getStats().ivs.hp;
+        int attackIV = pokemon.getStats().ivs.attack;
+        int defenceIV = pokemon.getStats().ivs.defence;
+        int spAttkIV = pokemon.getStats().ivs.specialAttack;
+        int spDefIV = pokemon.getStats().ivs.specialDefence;
+        int speedIV = pokemon.getStats().ivs.speed;
         String totalIVs = df.format((long)((int)((double)ivSum / 186.0D * 100.0D))) + "%";
         // Moves
         String move1 = pokemon.getMoveset().attacks[0] != null ? "" + pokemon.getMoveset().attacks[0] : "None";
@@ -226,59 +185,6 @@ public class Utils {
         return lore;
     }
 
-    public static boolean giveItem(User user, ItemStack item) {
-        Inventory hotbar = user.getInventory().query(QueryOperationTypes.INVENTORY_TYPE.of(Hotbar.class));
-        InventoryTransactionResult hotbarResult =  hotbar.offer(item);
-
-        if (hotbarResult.getType() != InventoryTransactionResult.Type.SUCCESS) {
-            Inventory main = user.getInventory().query(QueryOperationTypes.INVENTORY_TYPE.of(MainPlayerInventory.class));
-            InventoryTransactionResult mainResult =  main.offer(item);
-
-            return mainResult.getType() == InventoryTransactionResult.Type.SUCCESS;
-        }
-
-        return true;
-    }
-
-    // If items are unsuccessful they get added to storage
-    public static void giveOrStoreSnapshot(User user, ItemStackSnapshot snapshot, boolean sendInfoMessage) {
-        if (!giveItem(user, snapshot.createStack())) {
-            Sponge.getScheduler().createTaskBuilder().execute(() -> DataManager.storeItem(user, snapshot)).async().submit(SafeTrade.getPlugin());
-            if (sendInfoMessage) {
-                user.getPlayer().get().sendMessage(Text.of(TextColors.RED, "SafeTrade wasn't able to place an item in to your inventory. \n" +
-                        "SafeTrade has stored your item and awaits your relog to obtain it."));
-            }
-        }
-    }
-
-    // If items are unsuccessful they get added to storage
-    public static void giveOrStoreSnapshots(User user, List<ItemStackSnapshot> snapshots, boolean sendInfoMessage) {
-        int unsuccessfulCount = 0;
-        for (ItemStackSnapshot snapshot : snapshots) {
-            if (!user.isOnline()) {
-                Sponge.getScheduler().createTaskBuilder().execute(() -> DataManager.storeItem(user, snapshot)).async().submit(SafeTrade.getPlugin());
-                continue;
-            }
-
-            Inventory hotbar = user.getInventory().query(QueryOperationTypes.INVENTORY_TYPE.of(Hotbar.class));
-            InventoryTransactionResult hotbarResult =  hotbar.offer(snapshot.createStack());
-
-            if (hotbarResult.getType() != InventoryTransactionResult.Type.SUCCESS) {
-                Inventory main = user.getInventory().query(QueryOperationTypes.INVENTORY_TYPE.of(MainPlayerInventory.class));
-                InventoryTransactionResult mainResult =  main.offer(snapshot.createStack());
-
-                if (mainResult.getType() != InventoryTransactionResult.Type.SUCCESS) {
-                    unsuccessfulCount++;
-                    Sponge.getScheduler().createTaskBuilder().execute(() -> DataManager.storeItem(user, snapshot)).async().submit(SafeTrade.getPlugin());
-                }
-            }
-        }
-        if (unsuccessfulCount > 0 && sendInfoMessage && user.isOnline()) {
-            user.getPlayer().get().sendMessage(Text.of(TextColors.RED, "SafeTrade wasn't able to place " + unsuccessfulCount + " items in to your inventory. \n" +
-                    "SafeTrade has stored your items and awaits your relog to obtain them."));
-        }
-    }
-
     public static boolean isPlayerOccupied(Player player) {
         BattleControllerBase bcb = BattleRegistry.getSpectatedBattle((EntityPlayerMP)player);
         if (bcb != null) {
@@ -299,10 +205,54 @@ public class Utils {
         return localDateTime.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
     }
 
-    public static int getActiveTime(ListingBase listing) {
-        // minutes will be negative most of the time as the end date will most likely be sometime in the future.
-        int minutes = (int)ChronoUnit.MINUTES.between(listing.getEndDate(), LocalDateTime.now());
-        // If minutes is positive, it will still give a correct active time granted the config hasn't changed.
-        return listing instanceof PokemonListing ? Config.pokemonListingTime + minutes : Config.itemListingTime + minutes;
+    public static void recallAllPokemon(PlayerPartyStorage storage) {
+        storage.getTeam().forEach(pokemon -> {
+            EntityPixelmon entity = pokemon.getPixelmonIfExists();
+            if (entity != null) {
+                entity.unloadEntity();
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    public static LinkedHashMap<ItemStack, Pokemon>[] generatePCMaps(Side side) {
+        PCStorage pcStorage = Pixelmon.storageManager.getPCForPlayer(side.getUser().get().getUniqueId());
+        List<Pokemon> pcPokemon = getAllPokemon(pcStorage);
+        PlayerPartyStorage partyStorage = Pixelmon.storageManager.getParty(side.getUser().get().getUniqueId());
+        List<Pokemon> partyPokemon = getAllPokemon(partyStorage);
+
+        LinkedHashMap<ItemStack, Pokemon> partyMap = new LinkedHashMap<>();
+        LinkedHashMap<ItemStack, Pokemon> pcMap = new LinkedHashMap<>();
+
+        for (Pokemon pokemon : partyPokemon) {
+            partyMap.put(ItemUtils.Pokemon.getPokemonIcon(pokemon), pokemon);
+        }
+        for (Pokemon pokemon : pcPokemon) {
+            pcMap.put(ItemUtils.Pokemon.getPokemonIcon(pokemon), pokemon);
+        }
+
+        return new LinkedHashMap[]{partyMap, pcMap};
+    }
+
+    public static List<Pokemon> getAllPokemon(PCStorage storage) {
+        List<Pokemon> pokemon = new ArrayList<>();
+        for (Pokemon p : storage.getAll()) {
+            if (p != null) {
+                pokemon.add(p);
+            }
+        }
+
+        return pokemon;
+    }
+
+    public static List<Pokemon> getAllPokemon(PlayerPartyStorage storage) {
+        List<Pokemon> pokemon = new ArrayList<>();
+        for (Pokemon p : storage.getAll()) {
+            if (p != null) {
+                pokemon.add(p);
+            }
+        }
+
+        return pokemon;
     }
 }
