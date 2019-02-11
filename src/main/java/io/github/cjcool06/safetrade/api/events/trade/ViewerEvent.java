@@ -5,7 +5,7 @@ import net.minecraftforge.fml.common.eventhandler.Cancelable;
 import net.minecraftforge.fml.common.eventhandler.Event;
 import org.spongepowered.api.entity.living.player.Player;
 
-public abstract class ViewerEvent extends Event {
+public class ViewerEvent extends Event {
 
     public final Trade trade;
     public final Player viewer;

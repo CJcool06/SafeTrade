@@ -4,7 +4,7 @@ import io.github.cjcool06.safetrade.obj.Side;
 import net.minecraftforge.fml.common.eventhandler.Cancelable;
 import net.minecraftforge.fml.common.eventhandler.Event;
 
-public abstract class ConnectionEvent extends Event {
+public class ConnectionEvent extends Event {
 
     public final Side side;
 
