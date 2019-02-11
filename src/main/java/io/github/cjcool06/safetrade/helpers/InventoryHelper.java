@@ -450,7 +450,7 @@ public class InventoryHelper {
                             if (itemStack.equalTo(item)) {
                                 Pokemon pokemon = partyMap.get(itemStack);
 
-                                if (partyStorage.getTeam().contains(pokemon)) {
+                                if (Utils.getAllPokemon(partyStorage).contains(pokemon)) {
                                     if (side.vault.addPokemon(pokemon)) {
                                         partyStorage.set(partyStorage.getPosition(pokemon), null);
                                         Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
