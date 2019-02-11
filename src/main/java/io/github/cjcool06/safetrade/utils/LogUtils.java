@@ -1,15 +1,17 @@
 package io.github.cjcool06.safetrade.utils;
 
-import com.pixelmonmod.pixelmon.entities.pixelmon.EntityPixelmon;
+import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.managers.DataManager;
 import io.github.cjcool06.safetrade.obj.Log;
+import io.github.cjcool06.safetrade.obj.Side;
 import io.github.cjcool06.safetrade.obj.Trade;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.key.Keys;
 import org.spongepowered.api.entity.living.player.User;
 import org.spongepowered.api.item.inventory.ItemStackSnapshot;
+import org.spongepowered.api.service.economy.Currency;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.action.TextActions;
 import org.spongepowered.api.text.format.TextColors;
@@ -20,11 +22,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LogUtils {
+
     public static void logTrade(Trade trade) {
         Log log = new Log(trade);
         Sponge.getScheduler().createTaskBuilder().execute(() -> {
-            DataManager.addLog(trade.participants[0], log);
-            DataManager.addLog(trade.participants[1], log);
+            DataManager.addLog(trade.getSides()[0].getUser().get(), log);
+            DataManager.addLog(trade.getSides()[1].getUser().get(), log);
         }).async().submit(SafeTrade.getPlugin());
 
     }
@@ -57,52 +60,24 @@ public class LogUtils {
                         .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Day/Month/Year Hour:Minute"))).build()));
 
         // Participant 0
+        User p0 = trade.getSides()[0].getUser().get();
         contents.add(TextSerializers.JSON.serialize(
-                Text.builder().append(Text.of(TextColors.AQUA, trade.participants[0].getName()))
-                        .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click here to see " + trade.participants[0].getName() + "'s extended log for this trade"))).build()));
+                Text.builder().append(Text.of(TextColors.AQUA, p0.getName()))
+                        .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click here to see " + p0.getName() + "'s extended log for this trade"))).build()));
         contents.add(TextSerializers.JSON.serialize(
-                Text.of(TextColors.GREEN, trade.participants[0].getName() + "'s Extended Log ")));
+                Text.of(TextColors.GREEN, p0.getName() + "'s Extended Log ")));
         contents.add(TextSerializers.JSON.serialize(extentedLogs[0]));
 
         contents.add(TextSerializers.JSON.serialize(Text.of(TextColors.DARK_AQUA, " & ")));
 
         // Participant 1
+        User p1 = trade.getSides()[1].getUser().get();
         contents.add(TextSerializers.JSON.serialize(
-                Text.builder().append(Text.of(TextColors.AQUA, trade.participants[1].getName()))
-                        .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click here to see " + trade.participants[1].getName() + "'s extended log for this trade"))).build()));
+                Text.builder().append(Text.of(TextColors.AQUA, p1.getName()))
+                        .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click here to see " + p1.getName() + "'s extended log for this trade"))).build()));
         contents.add(TextSerializers.JSON.serialize(
-                Text.of(TextColors.GREEN, trade.participants[1].getName() + "'s Extended Log ")));
+                Text.of(TextColors.GREEN, p1.getName() + "'s Extended Log ")));
         contents.add(TextSerializers.JSON.serialize(extentedLogs[1]));
-
-        /*
-        Text.Builder builder = Text.builder();
-        Text[] extendedLog = createExtendedTextLog(trade);
-        builder.append(Text.builder().append(Text.of(TextColors.LIGHT_PURPLE, "[" + Log.getFormatter().format(LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime()) + " UTC] "))
-        .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Day/Month/Year Hour:Minute"))).build());
-        builder.append(Text.builder().append(Text.of(TextColors.AQUA, trade.participants[0].getName()))
-                .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click here to see " + trade.participants[0].getName() + "'s extended log for this trade")))
-                .onClick(TextActions.executeCallback(src -> {
-                    PaginationList.builder()
-                            .title(Text.of(TextColors.GREEN, trade.participants[0].getName() + "'s Extended Log "))
-                            //.contents(extendedLog[0])
-                            .contents(Text.of("Peek-a-boo"))
-                            .padding(Text.of(TextColors.GRAY, "-", TextColors.RESET))
-                            .sendTo(src);
-                }))
-                .build());
-        builder.append(Text.of(TextColors.DARK_AQUA, " & "));
-        builder.append(Text.builder().append(Text.of(TextColors.AQUA, trade.participants[1].getName()))
-                .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click here to see " + trade.participants[1].getName() + "'s extended log for this trade")))
-                .onClick(TextActions.executeCallback(src -> {
-                    PaginationList.builder()
-                            .title(Text.of(TextColors.GREEN, trade.participants[1].getName() + "'s Extended Log "))
-                            //.contents(extendedLog[1])
-                            .contents(Text.of("Peek-a-boo"))
-                            .padding(Text.of(TextColors.GRAY, "-", TextColors.RESET))
-                            .sendTo(src);
-                }))
-                .build());
-                */
 
 
         return contents;
@@ -115,19 +90,24 @@ public class LogUtils {
      * @return - Text array corresponding to trade participant indexes. For example, texts[0] is for trade.participants[0]
      */
     private static Text[] getExtendedLogs(Trade trade) {
+        Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
+
         Text.Builder builder1 =  Text.builder();
         Text.Builder builder2 = Text.builder();
+
+        Side side0 = trade.getSides()[0];
+        Side side1 = trade.getSides()[1];
 
         // TODO: Hover over the money to see their balance: before -> after
         builder1.append(Text.of("Money: "))
                 .color(TextColors.DARK_AQUA)
-                .append(Text.builder().append(Text.of(TextColors.AQUA, trade.money.get(trade.participants[0])))
+                .append(Text.builder().append(Text.of(TextColors.AQUA, side0.vault.account.getBalance(currency).intValue()))
                         .onHover(TextActions.showText(Text.of()))
                         .build())
                 .build();
         builder2.append(Text.of("Money: "))
                 .color(TextColors.DARK_AQUA)
-                .append(Text.builder().append(Text.of(TextColors.AQUA, trade.money.get(trade.participants[1]))).build())
+                .append(Text.builder().append(Text.of(TextColors.AQUA, side1.vault.account.getBalance(currency).intValue())).build())
                 .build();
 
         builder1.append(Text.of("\n" + "Pokemon:"))
@@ -136,7 +116,7 @@ public class LogUtils {
         builder2.append(Text.of("\n" + "Pokemon:"))
                 .color(TextColors.DARK_AQUA)
                 .build();
-        for (EntityPixelmon pixelmon : trade.listedPokemon.get(trade.participants[0]).values()) {
+        for (Pokemon pixelmon : side0.vault.getAllPokemon()) {
             Text.Builder pokemonInfo = Text.builder();
             int count = 0;
             for (Text text1 : Utils.getPokemonLore(pixelmon)) {
@@ -147,12 +127,12 @@ public class LogUtils {
                 }
             }
             builder1.append(Text.builder()
-                    .append(Text.of(TextColors.AQUA, "\n" + pixelmon.getName() + (pixelmon.isEgg && !Config.showEggStats ? " Egg" : "")))
+                    .append(Text.of(TextColors.AQUA, "\n" + pixelmon.getSpecies().getLocalizedName() + (pixelmon.isEgg() && !Config.showEggStats ? " Egg" : "")))
                     .onHover(TextActions.showText(pokemonInfo.build()))
                     .build())
                     .build();
         }
-        for (EntityPixelmon pixelmon : trade.listedPokemon.get(trade.participants[1]).values()) {
+        for (Pokemon pixelmon : side1.vault.getAllPokemon()) {
             Text.Builder pokemonInfo = Text.builder();
             int count = 0;
             for (Text text1 : Utils.getPokemonLore(pixelmon)) {
@@ -163,7 +143,7 @@ public class LogUtils {
                 }
             }
             builder2.append(Text.builder()
-                    .append(Text.of(TextColors.AQUA, "\n" + pixelmon.getName() + (pixelmon.isEgg && !Config.showEggStats ? " Egg" : "")))
+                    .append(Text.of(TextColors.AQUA, "\n" + pixelmon.getSpecies().getLocalizedName() + (pixelmon.isEgg() && !Config.showEggStats ? " Egg" : "")))
                     .onHover(TextActions.showText(pokemonInfo.build()))
                     .build())
                     .build();
@@ -176,7 +156,7 @@ public class LogUtils {
         builder2.append(Text.of("\n" + "Items:"))
                 .color(TextColors.DARK_AQUA)
                 .build();
-        for (ItemStackSnapshot snapshot : trade.getItems(trade.participants[0])) {
+        for (ItemStackSnapshot snapshot : side0.vault.getAllItems()) {
             Text.Builder builder = Text.builder();
             snapshot.get(Keys.ITEM_ENCHANTMENTS).ifPresent(enchantments -> {
                 enchantments.forEach(enchantment -> {
@@ -191,7 +171,7 @@ public class LogUtils {
                 builder1.append(Text.builder().append(Text.of("  ", TextColors.GOLD, "[", snapshot.get(Keys.DISPLAY_NAME).get(), TextColors.GOLD, "]")).build()).build();
             }
         }
-        for (ItemStackSnapshot snapshot : trade.getItems(trade.participants[1])) {
+        for (ItemStackSnapshot snapshot : side1.vault.getAllItems()) {
             Text.Builder builder = Text.builder();
             snapshot.get(Keys.ITEM_ENCHANTMENTS).ifPresent(enchantments -> {
                 builder.append(Text.of(TextColors.DARK_AQUA, "Enchantments: "));
@@ -209,4 +189,5 @@ public class LogUtils {
 
         return new Text[]{builder1.build(), builder2.build()};
     }
+
 }

@@ -1,4 +1,4 @@
-package io.github.cjcool06.safetrade.enums;
+package io.github.cjcool06.safetrade.api.enums;
 
 public enum TradeResult {
     /**

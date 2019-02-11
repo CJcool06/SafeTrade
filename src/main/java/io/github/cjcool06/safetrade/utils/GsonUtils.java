@@ -60,7 +60,9 @@ public class GsonUtils {
                 else
                     nbt.setDouble(key, (Double)map.get(key));
             }
-            catch (Exception exc) { ; }
+            catch (Exception exc) {
+
+            }
         }
 
         return nbt;

@@ -14,13 +14,9 @@ public class Config {
 
     public static String prefix = "&9&lSafeTrade &7&l>> &r";
     public static boolean showEggStats = false;
-    public static boolean cleanListings = true;
-    public static int pokemonListingTime = 60;
-    public static int itemListingTime = 60;
+    public static boolean showEggName = true;
     public static boolean gcLogsEnabled = false;
     public static int gcLogsExpiryTime = 31;
-    public static int maxListingsPerPlayer = 3;
-    public static int timeBeforeAllowedListingRemoval = 15;
 
     public static void load() {
         File file = new File(DIR, "safetrade.conf");
@@ -34,11 +30,7 @@ public class Config {
             else {
                 prefix = node.getNode("Prefix").getString(prefix);
                 showEggStats = node.getNode("ShowEggStats").getBoolean(showEggStats);
-                cleanListings = node.getNode("CleanListings").getBoolean(cleanListings);
-                pokemonListingTime = node.getNode("Listings", "ExpiryTime", "Pokemon").getInt(pokemonListingTime);
-                itemListingTime = node.getNode("Listings", "ExpiryTime", "Item").getInt(itemListingTime);
-                maxListingsPerPlayer = node.getNode("Listings", "MaxPerPlayer").getInt(maxListingsPerPlayer);
-                timeBeforeAllowedListingRemoval = node.getNode("Listings", "TimeBeforeAllowedListingRemoval").getInt(timeBeforeAllowedListingRemoval);
+                showEggName = node.getNode("ShowEggName").getBoolean();
                 gcLogsEnabled = node.getNode("GarbageCollector", "Logs", "Enabled").getBoolean(gcLogsEnabled);
                 gcLogsExpiryTime = node.getNode("GarbageCollector", "Logs", "ExpiryTime").getInt(gcLogsExpiryTime);
             }
@@ -51,11 +43,7 @@ public class Config {
         try {
             node.getNode("Prefix").setValue(prefix);
             node.getNode("ShowEggStats").setValue(showEggStats);
-            node.getNode("CleanListings").setValue(cleanListings);
-            node.getNode("Listings", "ExpiryTime", "Pokemon").setValue(pokemonListingTime);
-            node.getNode("Listings", "ExpiryTime", "Item").setValue(itemListingTime);
-            node.getNode("Listings", "MaxPerPlayer").setValue(maxListingsPerPlayer);
-            node.getNode("Listings", "TimeBeforeAllowedListingRemoval").setValue(timeBeforeAllowedListingRemoval);
+            node.getNode("ShowEggName").setValue(showEggName);
             node.getNode("GarbageCollector", "Logs", "Enabled").setValue(gcLogsEnabled);
             node.getNode("GarbageCollector", "Logs", "ExpiryTime").setValue(gcLogsExpiryTime);
             loader.save(node);

@@ -1,18 +1,16 @@
 package io.github.cjcool06.safetrade;
 
 import com.google.inject.Inject;
-import io.github.cjcool06.safetrade.api.enquiry.ListingBase;
-import io.github.cjcool06.safetrade.api.enquiry.ListingRegistrar;
-import io.github.cjcool06.safetrade.api.events.trade.TradeEndEvent;
+import com.pixelmonmod.pixelmon.Pixelmon;
 import io.github.cjcool06.safetrade.commands.TradeCommand;
 import io.github.cjcool06.safetrade.config.Config;
-import io.github.cjcool06.safetrade.enums.TradeResult;
-import io.github.cjcool06.safetrade.listeners.ChatListener;
 import io.github.cjcool06.safetrade.listeners.ConnectionListener;
-import io.github.cjcool06.safetrade.listings.ItemListing;
-import io.github.cjcool06.safetrade.listings.PokemonListing;
+import io.github.cjcool06.safetrade.listeners.EvolutionListener;
+import io.github.cjcool06.safetrade.listeners.TradeCreationListener;
+import io.github.cjcool06.safetrade.listeners.ViewerConnectionListener;
 import io.github.cjcool06.safetrade.managers.DataManager;
 import io.github.cjcool06.safetrade.obj.Trade;
+import io.github.cjcool06.safetrade.trackers.Tracker;
 import net.minecraftforge.fml.common.eventhandler.EventBus;
 import ninja.leaping.configurate.objectmapping.GuiceObjectMapperFactory;
 import org.slf4j.Logger;
@@ -29,12 +27,12 @@ import org.spongepowered.api.plugin.Dependency;
 import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.plugin.PluginContainer;
 import org.spongepowered.api.service.economy.EconomyService;
-import org.spongepowered.api.text.Text;
-import org.spongepowered.api.text.action.TextActions;
-import org.spongepowered.api.text.format.TextColors;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Plugin(id = SafeTrade.ID,
@@ -47,9 +45,11 @@ import java.util.concurrent.TimeUnit;
 public class SafeTrade {
     public static final String ID = "safetrade";
     public static final String NAME = "SafeTrade";
-    public static final String VERSION = "1.1.6";
-    public static final String DESCRIPTION = "Trade Pokemon and items safely";
+    public static final String VERSION = "2.0.0";
+    public static final String DESCRIPTION = "Trade Pokemon, Items, and Money safely";
     public static final String AUTHORS = "CJcool06";
+    public static final List<UUID> developers = Collections.unmodifiableList(Arrays.asList(UUID.fromString("16511d17-2b88-40e3-a4b2-7b7ba2f45485")));
+    public static final List<UUID> bugTesters = Collections.unmodifiableList(Arrays.asList());
     public static final EventBus EVENT_BUS = new EventBus();
     private static SafeTrade plugin;
     private EconomyService economyService = null;
@@ -71,8 +71,18 @@ public class SafeTrade {
     public void onPreInit(GamePreInitializationEvent event) {
         plugin = this;
 
-        ListingRegistrar.register("pokemon", PokemonListing.class);
-        ListingRegistrar.register("item", ItemListing.class);
+        Sponge.getEventManager().registerListeners(this, new ConnectionListener());
+
+        Pixelmon.EVENT_BUS.register(new EvolutionListener());
+
+        EVENT_BUS.register(new TradeCreationListener());
+        EVENT_BUS.register(new ViewerConnectionListener());
+
+        Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade");
+
+        Sponge.getServiceManager()
+                .getRegistration(EconomyService.class)
+                .ifPresent(prov -> economyService = prov.getProvider());
 
         logger.info("Loading configs.");
         Config.load();
@@ -80,20 +90,6 @@ public class SafeTrade {
 
     @Listener
     public void onInit(GameInitializationEvent event) {
-        Sponge.getEventManager().registerListeners(this, new ConnectionListener());
-        Sponge.getEventManager().registerListeners(this, new ChatListener());
-        Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade");
-
-        Sponge.getServiceManager()
-                .getRegistration(EconomyService.class)
-                .ifPresent(prov -> economyService = prov.getProvider());
-
-        logger.info("Economy plugin: " + (economyService == null ? "Not Found" : "Found"));
-        if (economyService == null) {
-            logger.warn("No economy plugin was found. Trades WILL break!");
-        }
-
-        // Logs GC
         Sponge.getScheduler().createTaskBuilder()
                 .execute(() -> {
                     if (Config.gcLogsEnabled) {
@@ -103,28 +99,6 @@ public class SafeTrade {
                         }
                     }
                 }).async().delay(5, TimeUnit.MINUTES).interval(1, TimeUnit.HOURS).submit(this);
-
-        // Listings GC
-        Sponge.getScheduler().createTaskBuilder()
-                .execute(() -> {
-                    ArrayList<ListingBase> listings = new ArrayList<>(DataManager.getActiveListings());
-                    for (ListingBase listing : listings) {
-                        if (DataManager.hasListingExpired(listing)) {
-                            listing.setExpired(true);
-                            DataManager.removeListing(listing);
-                            listing.getUser().getPlayer().ifPresent(player -> {
-                                player.sendMessage(Text.builder()
-                                        .append(Text.builder()
-                                                .append(Text.of(TextColors.RED, "Your SafeTrade listing has expired."))
-                                                .onHover(TextActions.showText(Text.joinWith(Text.of("\n"), listing.getDisplayLore())))
-                                                .build())
-                                        .append(Text.of(TextColors.GRAY, "  << Hover for info"))
-                                        .build());
-                            });
-
-                        }
-                    }
-                }).async().interval(30, TimeUnit.SECONDS).submit(this);
     }
 
     // Data load will cause errors if loaded before this event
@@ -133,18 +107,20 @@ public class SafeTrade {
         logger.info("Loading data...");
         DataManager.load();
         logger.info("Data loaded.");
+        logger.info("Economy plugin: " + (economyService == null ? "Not Found" : "Found"));
+        if (economyService == null) {
+            logger.warn("No economy plugin was found. Shit's gonna break.");
+        }
     }
 
     @Listener
     public void onGameStopping(GameStoppingServerEvent event) {
         logger.info("Executing shutdown tasks.");
-        for (Trade trade : DataManager.getActiveTrades()) {
-            SafeTrade.EVENT_BUS.post(new TradeEndEvent(trade, TradeResult.CANCELLED));
-            logger.warn("Force ending trade containing player " + trade.participants[0].getName() + " and " + trade.participants[1].getName());
-            DataManager.storeItemSnapshots(trade.participants[0], trade.getItems(trade.participants[0]));
-            DataManager.storeItemSnapshots(trade.participants[1], trade.getItems(trade.participants[1]));
+        for (Trade trade : Tracker.getAllActiveTrades()) {
+            trade.unloadToStorages();
         }
-        DataManager.trimFiles();
+        DataManager.save();
+        logger.info("Shutdown tasks completed.");
     }
 
     @Listener
@@ -154,7 +130,6 @@ public class SafeTrade {
         logger.info("Config reloaded.");
 
         logger.info("Reloading data...");
-        DataManager.getActiveListings().clear();
         DataManager.load();
         logger.info("Data loaded.");
     }

@@ -1,5 +1,7 @@
 package io.github.cjcool06.safetrade.commands;
 
+import io.github.cjcool06.safetrade.obj.Trade;
+import io.github.cjcool06.safetrade.trackers.Tracker;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.args.CommandContext;
@@ -11,28 +13,27 @@ import org.spongepowered.api.entity.living.player.User;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
 
-import java.util.UUID;
-
-public class TestCommand implements CommandExecutor {
+public class ViewCommand implements CommandExecutor {
 
     public static CommandSpec getSpec() {
         return CommandSpec.builder()
-                .description(Text.of("test"))
-                .permission("safetrade.dev.test")
+                .description(Text.of("View an ongoing SafeTrade"))
+                .permission("safetrade.admin.view")
+                .executor(new OpenCommand())
                 .arguments(GenericArguments.user(Text.of("target")))
-                .executor(new TestCommand())
                 .build();
     }
 
     public CommandResult execute(CommandSource src, CommandContext args) {
         Player player = (Player)src;
         User user = args.<User>getOne("target").get();
-        if (player.getUniqueId().equals(UUID.fromString("16511d17-2b88-40e3-a4b2-7b7ba2f45485"))) {
+        Trade trade = Tracker.getActiveTrade(user);
 
-            player.sendMessage(Text.of(TextColors.GREEN, "Command executed."));
+        if (trade != null) {
+            trade.addViewer(player, true);
         }
         else {
-            player.sendMessage(Text.of(TextColors.RED, "Only devs can use this command."));
+            player.sendMessage(Text.of(TextColors.RED, user.getName() + " is not currently participating in a SafeTrade."));
         }
 
         return CommandResult.success();
