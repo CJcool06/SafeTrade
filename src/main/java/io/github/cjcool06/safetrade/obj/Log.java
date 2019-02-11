@@ -42,8 +42,8 @@ public class Log {
     public Log(Trade trade) {
         this.uniqueID = UUID.randomUUID();
         this.timestamp = getFormatter().format(LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime());
-        this.participant0 = trade.participants[0].getUniqueId();
-        this.participant1 = trade.participants[1].getUniqueId();
+        this.participant0 = trade.getSides()[0].sideOwnerUUID;
+        this.participant1 = trade.getSides()[1].sideOwnerUUID;
         this.jsonTexts = LogUtils.createContents(trade);
     }
 
