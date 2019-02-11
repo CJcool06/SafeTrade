@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
 public class SafeTrade {
     public static final String ID = "safetrade";
     public static final String NAME = "SafeTrade";
-    public static final String VERSION = "1.2.0";
+    public static final String VERSION = "2.0.0";
     public static final String DESCRIPTION = "Trade Pokemon, Items, and Money safely";
     public static final String AUTHORS = "CJcool06";
     public static final List<UUID> developers = Collections.unmodifiableList(Arrays.asList(UUID.fromString("16511d17-2b88-40e3-a4b2-7b7ba2f45485")));
