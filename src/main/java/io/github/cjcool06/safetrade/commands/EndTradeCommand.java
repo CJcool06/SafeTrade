@@ -1,7 +1,7 @@
 package io.github.cjcool06.safetrade.commands;
 
-import io.github.cjcool06.safetrade.managers.DataManager;
 import io.github.cjcool06.safetrade.obj.Trade;
+import io.github.cjcool06.safetrade.trackers.Tracker;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.args.CommandContext;
@@ -24,15 +24,15 @@ public class EndTradeCommand implements CommandExecutor {
 
     public CommandResult execute(CommandSource src, CommandContext args) {
         Player target = args.<Player>getOne("target").get();
-        Trade trade = DataManager.getTrade(target);
+        Trade trade = Tracker.getActiveTrade(target);
 
         if (trade == null) {
-            src.sendMessage(Text.of(TextColors.RED, "That player is not in a trade."));
+            src.sendMessage(Text.of(TextColors.RED, "That player is not currently participating in a trade."));
             return CommandResult.success();
         }
-        trade.forceEnd();
-        src.sendMessage(Text.of(TextColors.GREEN, "Cancelled " + target.getName() + "'s safe trade."));
         trade.sendMessage(Text.of(TextColors.GRAY, "Trade force ended by " + src.getName() + "."));
+        trade.forceEnd();
+        src.sendMessage(Text.of(TextColors.GREEN, "Force ended " + target.getName() + "'s safe trade."));
 
         return CommandResult.success();
     }

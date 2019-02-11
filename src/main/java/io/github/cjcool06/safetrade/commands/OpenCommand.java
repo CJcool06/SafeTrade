@@ -1,38 +1,36 @@
 package io.github.cjcool06.safetrade.commands;
 
+import io.github.cjcool06.safetrade.api.enums.InventoryType;
+import io.github.cjcool06.safetrade.obj.Trade;
+import io.github.cjcool06.safetrade.trackers.Tracker;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.args.CommandContext;
-import org.spongepowered.api.command.args.GenericArguments;
 import org.spongepowered.api.command.spec.CommandExecutor;
 import org.spongepowered.api.command.spec.CommandSpec;
 import org.spongepowered.api.entity.living.player.Player;
-import org.spongepowered.api.entity.living.player.User;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
 
-import java.util.UUID;
-
-public class TestCommand implements CommandExecutor {
+public class OpenCommand implements CommandExecutor {
 
     public static CommandSpec getSpec() {
         return CommandSpec.builder()
-                .description(Text.of("test"))
-                .permission("safetrade.dev.test")
-                .arguments(GenericArguments.user(Text.of("target")))
-                .executor(new TestCommand())
+                .description(Text.of("Open a SafeTrade"))
+                .permission("safetrade.common.open")
+                .executor(new OpenCommand())
                 .build();
     }
 
     public CommandResult execute(CommandSource src, CommandContext args) {
         Player player = (Player)src;
-        User user = args.<User>getOne("target").get();
-        if (player.getUniqueId().equals(UUID.fromString("16511d17-2b88-40e3-a4b2-7b7ba2f45485"))) {
+        Trade trade = Tracker.getActiveTrade(player);
 
-            player.sendMessage(Text.of(TextColors.GREEN, "Command executed."));
+        if (trade != null) {
+            trade.getSide(player.getUniqueId()).ifPresent(side -> side.changeInventory(InventoryType.MAIN));
         }
         else {
-            player.sendMessage(Text.of(TextColors.RED, "Only devs can use this command."));
+            player.sendMessage(Text.of(TextColors.RED, "You are not currently participating in a SafeTrade."));
         }
 
         return CommandResult.success();

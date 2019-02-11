@@ -1,9 +1,10 @@
 package io.github.cjcool06.safetrade.commands;
 
 import com.google.common.collect.ImmutableMap;
-import io.github.cjcool06.safetrade.SafeTrade;
-import io.github.cjcool06.safetrade.managers.DataManager;
-import org.spongepowered.api.Sponge;
+import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
+import io.github.cjcool06.safetrade.obj.CommandWrapper;
+import io.github.cjcool06.safetrade.obj.PlayerStorage;
+import io.github.cjcool06.safetrade.trackers.Tracker;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.args.CommandContext;
@@ -40,6 +41,7 @@ public class StorageCommand implements CommandExecutor {
     public CommandResult execute(CommandSource src, CommandContext args) {
         User user = args.<User>getOne("target").get();
         String operation = args.<String>getOne("options").get();
+        PlayerStorage storage = Tracker.getOrCreateStorage(user);
 
         if (src instanceof Player) {
             Player player = (Player)src;
@@ -50,26 +52,34 @@ public class StorageCommand implements CommandExecutor {
                     player.sendMessage(Text.of(TextColors.RED, "You must have the item you want to add in your hand."));
                     return CommandResult.success();
                 }
-                Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                    DataManager.storeItem(user, optItem.get().createSnapshot());
-                    player.sendMessage(Text.of(TextColors.GREEN, "Successfully added item to " + user.getName() + "'s SafeTrade storage."));
-                }).async().submit(SafeTrade.getPlugin());
+                storage.addItem(optItem.get().createSnapshot());
+                player.sendMessage(Text.of(TextColors.GREEN, "Successfully added item to " + user.getName() + "'s SafeTrade storage."));
             }
         }
 
         if (operation.equalsIgnoreCase("clear")) {
-            Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                DataManager.clearStoredItems(user);
-                src.sendMessage(Text.of(TextColors.GREEN, "Successfully cleared " + user.getName() + "'s SafeTrade storage."));
-            }).async().submit(SafeTrade.getPlugin());
+            storage.clearItems();
+            src.sendMessage(Text.of(TextColors.GREEN, "Successfully cleared " + user.getName() + "'s SafeTrade storage."));
         }
         else if (operation.equalsIgnoreCase("list")) {
             src.sendMessage(Text.of(TextColors.GOLD, user.getName() + "'s SafeTrade Storage:"));
-            Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                for (ItemStackSnapshot snapshot : DataManager.getStoredItems(user)) {
-                    src.sendMessage(Text.of(TextColors.GREEN, snapshot.getQuantity() + "x ", TextColors.AQUA, snapshot.getTranslation().get()));
-                }
-            }).async().submit(SafeTrade.getPlugin());
+            src.sendMessage(Text.of());
+
+            for (ItemStackSnapshot snapshot : storage.getItems()) {
+                src.sendMessage(Text.of(TextColors.GREEN, snapshot.getQuantity() + "x ", TextColors.AQUA, snapshot.getTranslation().get()));
+            }
+            src.sendMessage(Text.of());
+
+            for (Pokemon pokemon : storage.getPokemons()) {
+                src.sendMessage(Text.of(TextColors.AQUA, pokemon.getSpecies().getLocalizedName()));
+            }
+            src.sendMessage(Text.of());
+
+            for (CommandWrapper wrapper : storage.getCommands()) {
+                src.sendMessage(Text.of(TextColors.AQUA, wrapper.cmd));
+            }
+            src.sendMessage(Text.of());
+
         }
         else {
             src.sendMessage(Text.of(TextColors.RED, "You must be a player to do that."));

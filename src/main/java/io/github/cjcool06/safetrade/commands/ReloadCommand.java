@@ -1,7 +1,6 @@
 package io.github.cjcool06.safetrade.commands;
 
 import io.github.cjcool06.safetrade.config.Config;
-import io.github.cjcool06.safetrade.managers.DataManager;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.args.CommandContext;
@@ -25,10 +24,8 @@ public class ReloadCommand implements CommandExecutor {
         Config.load();
         src.sendMessage(Text.of(TextColors.GRAY, "Config reloaded."));
 
-        src.sendMessage(Text.of(TextColors.GRAY, "Reloading data..."));
-        DataManager.getActiveListings().clear();
-        DataManager.load();
-        src.sendMessage(Text.of(TextColors.GRAY, "Data loaded."));
+        //DataManager.load();
+        //src.sendMessage(Text.of(TextColors.GRAY, "Data loaded."));
 
         return CommandResult.success();
     }
