@@ -6,12 +6,14 @@ import com.pixelmonmod.pixelmon.api.pokemon.PokemonSpec;
 import com.pixelmonmod.pixelmon.api.storage.PCStorage;
 import com.pixelmonmod.pixelmon.battles.BattleRegistry;
 import com.pixelmonmod.pixelmon.battles.controller.BattleControllerBase;
+import com.pixelmonmod.pixelmon.config.PixelmonItems;
 import com.pixelmonmod.pixelmon.entities.pixelmon.EntityPixelmon;
 import com.pixelmonmod.pixelmon.items.ItemPixelmonSprite;
 import com.pixelmonmod.pixelmon.storage.PlayerPartyStorage;
 import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.obj.Side;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.nbt.NBTTagCompound;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
@@ -39,6 +41,14 @@ public class Utils {
     }
 
     public static ItemStack getPicture(Pokemon pokemon) {
+        if (pokemon.isEgg()) {
+            net.minecraft.item.ItemStack itemStack = new net.minecraft.item.ItemStack(PixelmonItems.itemPixelmonSprite);
+            NBTTagCompound nbt = new NBTTagCompound();
+            nbt.setString("SpriteName", "pixelmon:sprites/eggs/egg1");
+            itemStack.setTagCompound(nbt);
+            return (ItemStack)(Object)itemStack;
+        }
+
         return (ItemStack)(Object)ItemPixelmonSprite.getPhoto(pokemon);
     }
 /*
