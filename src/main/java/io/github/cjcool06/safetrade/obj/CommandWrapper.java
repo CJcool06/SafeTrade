@@ -7,6 +7,9 @@ import io.github.cjcool06.safetrade.api.enums.CommandType;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.entity.living.player.Player;
 
+/**
+ * A CommandWrapper encapsulates the functionality of Sponge's command execution.
+ */
 public class CommandWrapper {
     public final String cmd;
     public final CommandType commandType;

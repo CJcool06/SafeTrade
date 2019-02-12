@@ -18,6 +18,9 @@ public class ConnectionEvent extends Event {
             super(side);
         }
 
+        /**
+         * Posted before the {@link Side} connects to the trade inventory.
+         */
         @Cancelable
         public static class Pre extends Join {
             public Pre(Side side) {
@@ -25,6 +28,9 @@ public class ConnectionEvent extends Event {
             }
         }
 
+        /**
+         * Posted after the {@link Side} connects to the trade inventory.
+         */
         public static class Post extends Join {
             public Post(Side side) {
                 super(side);
@@ -32,7 +38,9 @@ public class ConnectionEvent extends Event {
         }
     }
 
-
+    /**
+     * Posted when a {@link Side} closes the trade inventory.
+     */
     public static class Left extends ConnectionEvent {
         public Left(Side side) {
             super(side);

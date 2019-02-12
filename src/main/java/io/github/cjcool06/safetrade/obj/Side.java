@@ -37,38 +37,83 @@ public class Side {
         this.vault = new Vault(this);
     }
 
+    /**
+     * Sets whether the side is considered ready to trade.
+     *
+     * @param ready True if ready
+     */
     public void setReady(boolean ready) {
         this.ready = ready;
     }
 
+    /**
+     * Gets whether the side is considered ready to trade.
+     *
+     * @return True if ready
+     */
     public boolean isReady() {
         return ready;
     }
 
+    /**
+     * Sets whether the side is considered paused.
+     *
+     * @param paused True if paused
+     */
     public void setPaused(boolean paused) {
         this.paused = paused;
     }
 
+    /**
+     * Gets whether the side is considered paused.
+     *
+     * @return True if paused
+     */
     public boolean isPaused() {
         return paused;
     }
 
+    /**
+     * Gets whether the side has confirmed the trade.
+     *
+     * @return True if confirmed
+     */
     public boolean isConfirmed() {
         return confirmed;
     }
 
+    /**
+     * Sets whether the side has confirmed the trade.
+     *
+     * @param confirmed True if confirmed
+     */
     public void setConfirmed(boolean confirmed) {
         this.confirmed = confirmed;
     }
 
+    /**
+     * Attempts to get the {@link Player} of this side.
+     *
+     * @return An {@link Optional}
+     */
     public Optional<Player> getPlayer() {
         return Sponge.getServer().getPlayer(sideOwnerUUID);
     }
 
+    /**
+     * Attempts to get the {@link User} of this side.
+     *
+     * @return An {@link Optional}
+     */
     public Optional<User> getUser() {
         return Sponge.getServiceManager().provide(UserStorageService.class).get().get(sideOwnerUUID);
     }
 
+    /**
+     * Gets the other side of the {@link Trade}.
+     *
+     * @return The other side
+     */
     public Side getOtherSide() {
         return parentTrade.getSides()[0].equals(this) ? parentTrade.getSides()[1] : parentTrade.getSides()[0];
     }
@@ -150,12 +195,23 @@ public class Side {
         }
     }
 
+    /**
+     * Sends a {@link Text} to the player occupying this side.
+     *
+     * @param text The message
+     */
     public void sendMessage(Text text) {
         if (getPlayer().isPresent()) {
             getPlayer().get().sendMessage(text);
         }
     }
 
+    /**
+     * Sends a {@link Title} to the player occupying this side.
+     *
+     * @param title The title
+     * @param subtitle The subtitle
+     */
     public void sendTitle(Text title, Text subtitle) {
         if (getPlayer().isPresent()) {
             Title t = Title.builder()

@@ -13,6 +13,9 @@ public class TradeEvent extends Event {
         this.trade = trade;
     }
 
+    /**
+     * Posted before the {@link Trade} is executed.
+     */
     @Cancelable
     public static class Executing extends TradeEvent {
         public Executing(Trade trade) {
@@ -28,12 +31,18 @@ public class TradeEvent extends Event {
             this.result = result;
         }
 
+        /**
+         * Posted after the {@link Trade} is executed and was successful.
+         */
         public static class SuccessfulTrade extends Executed {
             public SuccessfulTrade(Trade trade, TradeResult result) {
                 super(trade, result);
             }
         }
 
+        /**
+         * Posted after the {@link Trade} is executed and was unsuccessful.
+         */
         public static class UnsuccessfulTrade extends Executed {
             public UnsuccessfulTrade(Trade trade, TradeResult result) {
                 super(trade, result);
@@ -41,6 +50,9 @@ public class TradeEvent extends Event {
         }
     }
 
+    /**
+     * Posted after the {@link Trade} is cancelled.
+     */
     public static class Cancelled extends TradeEvent {
         public Cancelled(Trade trade) {
             super(trade);

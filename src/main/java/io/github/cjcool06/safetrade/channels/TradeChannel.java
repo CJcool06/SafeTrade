@@ -14,6 +14,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * A TradeChannel represents the chat between the two {@link io.github.cjcool06.safetrade.obj.Side}s of a {@link io.github.cjcool06.safetrade.obj.Trade}.
+ */
 public class TradeChannel implements MutableMessageChannel {
     List<MessageReceiver> members = new ArrayList<>();
 

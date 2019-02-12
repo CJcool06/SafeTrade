@@ -2,7 +2,7 @@
   {
     "modid": "safetrade",
     "name": "SafeTrade",
-    "description": "Trade Pokemon and items safely",
+    "description": "Trade Pokemon, Items, and Money safely",
     "version": "${version}",
     "mcversion": "${mcversion}",
     "url": "",

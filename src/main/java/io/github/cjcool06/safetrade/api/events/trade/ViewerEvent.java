@@ -21,6 +21,9 @@ public class ViewerEvent extends Event {
             super(trade, player);
         }
 
+        /**
+         * Posted before the viewer is added to the {@link Trade}.
+         */
         @Cancelable
         public static class Pre extends Add {
             public Pre(Trade trade, Player player) {
@@ -28,6 +31,9 @@ public class ViewerEvent extends Event {
             }
         }
 
+        /**
+         * Posted after the viewer is added to the {@link Trade}.
+         */
         public static class Post extends Add {
             public Post(Trade trade, Player player) {
                 super(trade, player);
@@ -41,6 +47,9 @@ public class ViewerEvent extends Event {
             super(trade, player);
         }
 
+        /**
+         * Posted before the viewer is removed from the {@link Trade}.
+         */
         @Cancelable
         public static class Pre extends Remove {
             public Pre(Trade trade, Player player) {
@@ -48,6 +57,9 @@ public class ViewerEvent extends Event {
             }
         }
 
+        /**
+         * Posted after the viewer is removed from the {@link Trade}.
+         */
         public static class Post extends Remove {
             public Post(Trade trade, Player player) {
                 super(trade, player);

@@ -1,11 +1,11 @@
 # Created by .ignore support plugin (hsz.mobi)
 
 /libs/
-/src/main/resources/
 /src/test/
 /.idea/
 /build
 /.gradle
+/out
 /settings.gradle
 /gradle
 /gradlew

@@ -4,6 +4,9 @@ import io.github.cjcool06.safetrade.obj.Trade;
 import io.github.cjcool06.safetrade.api.enums.TradeState;
 import net.minecraftforge.fml.common.eventhandler.Event;
 
+/**
+ * Posted after the {@link Trade}'s state is changed.
+ */
 public class StateChangedEvent extends Event {
 
     public final Trade trade;
