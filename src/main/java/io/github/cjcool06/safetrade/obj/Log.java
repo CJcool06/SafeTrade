@@ -19,6 +19,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * A Log represents the information saved by a {@link Trade} when it's successfully executed.
+ */
 @ConfigSerializable
 public class Log {
     @Setting
@@ -47,26 +50,56 @@ public class Log {
         this.jsonTexts = LogUtils.createContents(trade);
     }
 
+    /**
+     * Gets the {@link UUID} of the log.
+     *
+     * @return The unique id
+     */
     public UUID getUniqueID() {
         return uniqueID;
     }
 
+    /**
+     * Gets the timestamp of when the log was created.
+     *
+     * @return The timestamp
+     */
     public LocalDateTime getTimestamp() {
         return LocalDateTime.parse(timestamp, getFormatter());
     }
 
+    /**
+     * Gets the {@link UUID} of the participants of the trade.
+     *
+     * @return The participants' uuids
+     */
     public UUID[] getParticipantsUUID() {
         return new UUID[]{participant0, participant1};
     }
 
+    /**
+     * Gets the the participants of the trade.
+     *
+     * @return The participants
+     */
     public User[] getParticipants() {
         return new User[]{Utils.getUser(participant0).isPresent() ? Utils.getUser(participant0).get() : null, Utils.getUser(participant1).isPresent() ? Utils.getUser(participant1).get() : null};
     }
 
+    /**
+     * Gets the texts that were saved in json.
+     *
+     * @return A list of the texts as strings
+     */
     public List<String> getJsonTexts() {
         return new ArrayList<>(jsonTexts);
     }
 
+    /**
+     * Builds the log {@link Text} from the json texts.
+     *
+     * @return The log text
+     */
     public Text getText() {
         Text.Builder builder = Text.builder();
         builder.append(TextSerializers.JSON.deserialize(jsonTexts.get(0)));
@@ -94,6 +127,11 @@ public class Log {
         return builder.build();
     }
 
+    /**
+     * Gets the {@link DateTimeFormatter} used for the timestamp.
+     *
+     * @return The format
+     */
     public static DateTimeFormatter getFormatter() {
         return DateTimeFormatter.ofPattern("[dd/MM/yyyy HH:mm]");
     }

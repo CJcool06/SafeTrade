@@ -20,9 +20,6 @@ public class TransactionEvent extends Event {
             this.itemStack = itemStack;
         }
 
-        /**
-         * Fired when an item is attempted to be added.
-         */
         public static class Add extends Item {
 
             private Add(Vault vault, ItemStack itemStack) {

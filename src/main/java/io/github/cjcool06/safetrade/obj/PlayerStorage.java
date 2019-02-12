@@ -29,6 +29,11 @@ import java.util.*;
 
 // TODO: Make PlayerStorage GUI that admins can edit
 
+/**
+ * A PlayerStorage represents a storage for a {@link User} that holds {@link ItemStackSnapshot}s, {@link Pokemon}, and {@link CommandWrapper}s.
+ *
+ * <p>PlayerStorage data persists across restarts.</p>
+ */
 public class PlayerStorage {
     public final UUID playerUUID;
 
@@ -49,10 +54,20 @@ public class PlayerStorage {
         this.commands.addAll(commands);
     }
 
+    /**
+     * Attempts to get the {@link Player} of this storage.
+     *
+     * @return An {@link Optional}
+     */
     public Optional<Player> getPlayer() {
         return Sponge.getServer().getPlayer(playerUUID);
     }
 
+    /**
+     * Attempts to get the {@link User} of this storage.
+     *
+     * @return An {@link Optional}
+     */
     public Optional<User> getUser() {
         return Sponge.getServiceManager().provide(UserStorageService.class).get().get(playerUUID);
     }
@@ -66,21 +81,43 @@ public class PlayerStorage {
         return needsSaving;
     }
 
-    // Items
+    /**
+     * Gets all {@link ItemStackSnapshot}s in this storage.
+     *
+     * @return An unmodifiable list of items
+     */
     public List<ItemStackSnapshot> getItems() {
         return Collections.unmodifiableList(items);
     }
 
+    /**
+     * Adds an {@link ItemStackSnapshot} to this storage.
+     *
+     * @param snapshot The item
+     * @return True if successfully added
+     */
     public boolean addItem(ItemStackSnapshot snapshot) {
         needsSaving = true;
         return items.add(snapshot);
     }
 
+    /**
+     * Removes an {@link ItemStackSnapshot} from this storage.
+     *
+     * @param snapshot The item
+     * @return True if successfully removed
+     */
     public boolean removeItem(ItemStackSnapshot snapshot) {
         needsSaving = true;
         return items.remove(snapshot);
     }
 
+    /**
+     * Removes an {@link ItemStack} from this storage.
+     *
+     * @param itemStack The item
+     * @return True if successfully removed
+     */
     public boolean removeItem(ItemStack itemStack) {
         Iterator<ItemStackSnapshot> iter = items.iterator();
         while (iter.hasNext()) {
@@ -94,11 +131,21 @@ public class PlayerStorage {
         return false;
     }
 
+    /**
+     * Clears all items from this storage.
+     */
     public void clearItems() {
         needsSaving = true;
         items.clear();
     }
 
+    /**
+     * Give the items in this storage to the storage owner and remove them.
+     *
+     * <p>If the player's {@link Inventory} becomes full it will halt and return.</p>
+     *
+     * @return The {@link ItemStackSnapshot}s that were successfully given
+     */
     public List<ItemStackSnapshot> giveItems() {
         List<ItemStackSnapshot> successes = new ArrayList<>();
         Iterator<ItemStackSnapshot> iter = items.iterator();
@@ -127,21 +174,40 @@ public class PlayerStorage {
         return successes;
     }
 
-    // Pokemon
+    /**
+     * Gets all {@link Pokemon}s in this storage.
+     *
+     * @return An unmodifiable list of pokemon
+     */
     public List<Pokemon> getPokemons() {
         return Collections.unmodifiableList(pokemons);
     }
 
+    /**
+     * Adds a {@link Pokemon} to this storage.
+     *
+     * @param pokemon The pokemon
+     * @return True if successfully added
+     */
     public boolean addPokemon(Pokemon pokemon) {
         needsSaving = true;
         return pokemons.add(pokemon);
     }
 
+    /**
+     * Removes a {@link Pokemon} from this storage.
+     *
+     * @param pokemon The pokemon
+     * @return True if successfully removed
+     */
     public boolean removePokemon(Pokemon pokemon) {
         needsSaving = true;
         return pokemons.remove(pokemon);
     }
 
+    /**
+     * Clears all pokemon from this storage.
+     */
     public void clearPokemon() {
         needsSaving = true;
         pokemons.clear();
@@ -176,26 +242,50 @@ public class PlayerStorage {
         return successes;
     }
 
-    // Commands
+    /**
+     * Gets all {@link CommandWrapper}s in this storage.
+     *
+     * @return An unmodifiable list of command wrappers
+     */
     public List<CommandWrapper> getCommands() {
         return Collections.unmodifiableList(commands);
     }
 
+    /**
+     * Adds a {@link CommandWrapper} to this storage.
+     *
+     * @param commandWrapper The command wrapper
+     * @return True if successfully added
+     */
     public boolean addCommand(CommandWrapper commandWrapper) {
         needsSaving = true;
         return commands.add(commandWrapper);
     }
 
+    /**
+     * Removes a {@link CommandWrapper} from this storage.
+     *
+     * @param commandWrapper The command wrapper
+     * @return True if successfully removed
+     */
     public boolean removeCommand(CommandWrapper commandWrapper) {
         needsSaving = true;
         return commands.remove(commandWrapper);
     }
 
+    /**
+     * Clears all commands from this storage.
+     */
     public void clearCommands() {
         needsSaving = true;
         commands.clear();
     }
 
+    /**
+     * Gets whether the storage is empty.
+     *
+     * @return True if empty
+     */
     public boolean isEmpty() {
         return items.isEmpty() && pokemons.isEmpty() && commands.isEmpty();
     }
@@ -231,11 +321,19 @@ public class PlayerStorage {
         return commandsExecuted;
     }
 
+    /**
+     * Save the storage to file.
+     */
     public void save() {
         DataManager.savePlayerStorage(this);
         needsSaving = false;
     }
 
+    /**
+     * Serialise the storage in to a container ({@link JsonObject}) to be saved to file.
+     *
+     * @param jsonObject The container
+     */
     public void toContainer(JsonObject jsonObject) {
         JsonArray itemsArr = new JsonArray();
         JsonArray pokemonsArr = new JsonArray();
@@ -265,6 +363,12 @@ public class PlayerStorage {
         jsonObject.add("Items", itemsArr);
     }
 
+    /**
+     * De-serialise the storage from a container ({@link JsonObject}).
+     *
+     * @param jsonObject The container
+     * @return The de-serialised storage
+     */
     public static PlayerStorage fromContainer(JsonObject jsonObject) {
         try {
             UUID playerUUID = UUID.fromString(jsonObject.get("PlayerUUID").getAsString());

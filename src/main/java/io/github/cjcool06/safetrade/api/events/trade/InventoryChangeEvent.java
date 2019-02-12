@@ -13,6 +13,9 @@ public class InventoryChangeEvent extends Event {
         this.side = side;
     }
 
+    /**
+     * Posted before a {@link Side} changes inventory.
+     */
     @Cancelable
     public static class Pre extends InventoryChangeEvent {
         public final InventoryType newInventory;
@@ -23,6 +26,9 @@ public class InventoryChangeEvent extends Event {
         }
     }
 
+    /**
+     * Posted after a {@link Side} changes inventory.
+     */
     public static class Post extends InventoryChangeEvent {
 
         public Post(Side side) {

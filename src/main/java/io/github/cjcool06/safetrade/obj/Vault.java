@@ -35,7 +35,7 @@ import org.spongepowered.api.text.format.TextColors;
 import java.util.*;
 
 /**
- * A Vault represents a side-specific storage, capable of holding Items, Pokemon, Money that can be manipulated.
+ * A Vault represents a side-specific storage, capable of holding Items, Pokemon, and Money that can be manipulated.
  */
 public class Vault {
     public final Side side;
@@ -71,12 +71,22 @@ public class Vault {
         formatPokemonInventory();
     }
 
-    public void setLocked(boolean locked) {
-        this.locked = locked;
-    }
-
+    /**
+     * Gets whether the vault is locked.
+     *
+     * @return True if locked
+     */
     public boolean isLocked() {
         return locked;
+    }
+
+    /**
+     * Sets whether the vault is locked.
+     *
+     * @param locked True if locked
+     */
+    public void setLocked(boolean locked) {
+        this.locked = locked;
     }
 
     /**
@@ -516,6 +526,11 @@ public class Vault {
         }
     }
 
+    /**
+     * Gets all the {@link ItemStackSnapshot}s in the vault.
+     *
+     * @return A list of items
+     */
     public List<ItemStackSnapshot> getAllItems() {
         List<ItemStackSnapshot> items = new ArrayList<>();
 
@@ -529,14 +544,23 @@ public class Vault {
         return items;
     }
 
+    /**
+     * Gets all the {@link Pokemon} in the vault.
+     *
+     * @return A list of pokemon
+     */
     public List<Pokemon> getAllPokemon() {
         return Lists.newArrayList(entityStorage.values());
     }
 
+    /**
+     * Clears the Items, Pokemon, and Money from the vault.
+     */
     public void clear() {
         itemStorage.clear();
         pokemonStorage.clear();
         entityStorage.clear();
+        account.resetBalance(SafeTrade.getEcoService().getDefaultCurrency(), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
     }
 
     /**

@@ -4,7 +4,7 @@ import io.github.cjcool06.safetrade.obj.Trade;
 import net.minecraftforge.fml.common.eventhandler.Event;
 
 /**
- * Event is fired when a new {@link Trade} has been created.
+ * Posted when a new {@link Trade} has been created.
  *
  * <p>Specifically, it is fired at the end of the constructor.</p>
  */

@@ -34,6 +34,9 @@ import org.spongepowered.api.text.format.TextColors;
 
 import java.util.*;
 
+/**
+ * A Trade represents two participants attempting to trade Items, Pokemon, and Money with each other using an intuitive and real-time GUI.
+ */
 public class Trade {
     private final UUID id;
     private final Side[] sides;
@@ -399,6 +402,9 @@ public class Trade {
         });
     }
 
+    /**
+     * Reformats the inventory.
+     */
     public void reformatInventory() {
         tradeInventory.slots().forEach(slot -> {
             int i = slot.getProperty(SlotIndex.class, "slotindex").get().getValue();
