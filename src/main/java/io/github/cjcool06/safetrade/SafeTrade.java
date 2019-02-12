@@ -128,10 +128,6 @@ public class SafeTrade {
         logger.info("Reloading config...");
         Config.load();
         logger.info("Config reloaded.");
-
-        logger.info("Reloading data...");
-        DataManager.load();
-        logger.info("Data loaded.");
     }
 
     @Listener
