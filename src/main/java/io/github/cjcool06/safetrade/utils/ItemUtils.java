@@ -19,7 +19,6 @@ import org.spongepowered.api.profile.GameProfile;
 import org.spongepowered.api.service.economy.Currency;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
-import org.spongepowered.api.text.format.TextStyles;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -112,20 +111,6 @@ public class ItemUtils {
             item.offer(Keys.DYE_COLOR, DyeColors.ORANGE);
             item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Pause"));
             item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Flag yourself as paused")));
-            return item;
-        }
-
-        public static ItemStack getBugTesterToken() {
-            ItemStack item = ItemStack.of(ItemTypes.COOKIE, 1);
-            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, TextStyles.BOLD, "Bug Tester"));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GREEN, "This player is a SafeTrade bug tester")));
-            return item;
-        }
-
-        public static ItemStack getDeveloperToken() {
-            ItemStack item = ItemStack.of(ItemTypes.CAKE, 1);
-            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, TextStyles.BOLD, "Developer"));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GREEN, TextStyles.BOLD, "This player is a SafeTrade developer")));
             return item;
         }
     }

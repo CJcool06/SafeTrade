@@ -29,10 +29,6 @@ import org.spongepowered.api.plugin.PluginContainer;
 import org.spongepowered.api.service.economy.EconomyService;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Plugin(id = SafeTrade.ID,
@@ -48,8 +44,6 @@ public class SafeTrade {
     public static final String VERSION = "2.0.0";
     public static final String DESCRIPTION = "Trade Pokemon, Items, and Money safely";
     public static final String AUTHORS = "CJcool06";
-    public static final List<UUID> developers = Collections.unmodifiableList(Arrays.asList(UUID.fromString("16511d17-2b88-40e3-a4b2-7b7ba2f45485")));
-    public static final List<UUID> bugTesters = Collections.unmodifiableList(Arrays.asList());
     public static final EventBus EVENT_BUS = new EventBus();
     private static SafeTrade plugin;
     private EconomyService economyService = null;

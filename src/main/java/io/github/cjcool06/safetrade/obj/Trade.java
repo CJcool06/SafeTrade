@@ -426,17 +426,6 @@ public class Trade {
             else if (i == 28) {
                 slot.set(ItemUtils.Main.getItemStorage(sides[0]));
             }
-            else if (i == 29) {
-                if (SafeTrade.bugTesters.contains(sides[0].sideOwnerUUID)) {
-                    slot.set(ItemUtils.Main.getBugTesterToken());
-                }
-                else if (SafeTrade.developers.contains(sides[0].sideOwnerUUID)) {
-                    slot.set(ItemUtils.Main.getDeveloperToken());
-                }
-                else {
-                    slot.set(ItemUtils.Other.getFiller(DyeColors.BLACK));
-                }
-            }
             // Pokemon storage
             else if (i == 30) {
                 slot.set(ItemUtils.Main.getPokemonStorage(sides[0]));
@@ -458,17 +447,6 @@ public class Trade {
             // Item storage
             else if (i == 32) {
                 slot.set(ItemUtils.Main.getItemStorage(sides[1]));
-            }
-            else if (i == 33) {
-                if (SafeTrade.bugTesters.contains(sides[1].sideOwnerUUID)) {
-                    slot.set(ItemUtils.Main.getBugTesterToken());
-                }
-                else if (SafeTrade.developers.contains(sides[1].sideOwnerUUID)) {
-                    slot.set(ItemUtils.Main.getDeveloperToken());
-                }
-                else {
-                    slot.set(ItemUtils.Other.getFiller(DyeColors.BLACK));
-                }
             }
             // Pokemon storage
             else if (i == 34) {
@@ -497,7 +475,7 @@ public class Trade {
                 slot.set(ItemUtils.Main.getPause());
             }
             // Filler
-            else if (i == 10 || i == 12 || i == 14 || i == 16 || i == 19 || i == 21 || i == 23 || i == 25 || (i >= 37 && i <= 39) || (i >= 41 && i <= 43)) {
+            else if (i == 10 || i == 12 || i == 14 || i == 16 || i == 19 || i == 21 || i == 23 || i == 25 || i == 29 || i == 33 || (i >= 37 && i <= 39) || (i >= 41 && i <= 43)) {
                 slot.set(ItemUtils.Other.getFiller(DyeColors.BLACK));
             }
         });
