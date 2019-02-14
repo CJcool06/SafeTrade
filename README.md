@@ -2,9 +2,15 @@
 
 SafeTrade's primary purpose is to reduce the risk associated with trading your Pokemon, Items, and Money with randoms over the internet without sacrificing convenience.
 
-## SafeTrading
-The culmination of years of experience in both scamming and being scammed, beautifully come together to create this absolute **unit** of a feature. Never has trading been so simple, yet so elegant.  
+## Features
 
-To get started, simply request a trade with someone, wait for the accept, and then soak in the *beauty* that is the GUI. Once both players are happy and have accepted the terms of the trade, be prepared to have your senses overloaded with the anticipation of what can only be described as the greatest countdown cinematic in recent history.  
-
-In the end, when the trade has executed and the dust has settled, there's a 90% chance that you will have a single moment of *pure clarity* that will undoubtedly change your life forever. You're welcome.
+* Pause and exit the trade. This means you can start a trade, pause, get some items from a chest, and resume the trade
+* Supports large trades
+* Simple to use GUI
+* Trade Pokemon directly from your PC
+* A trade overview to ensure both people are happy with the trade
+* Offline storage in-case something goes wrong. Simply reconnect with space in your inv/PC to get the items/pokemon
+* Pokemon will evolve through trades as they would in a trade machine (haunter, etc)
+* Trade with anyone, anywhere.
+* Detailed logs
+* Staff can monitor a trade
