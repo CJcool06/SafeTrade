@@ -1,5 +1,6 @@
 package io.github.cjcool06.safetrade.obj;
 
+import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.InventoryType;
 import io.github.cjcool06.safetrade.api.events.trade.InventoryChangeEvent;
 import io.github.cjcool06.safetrade.helpers.InventoryHelper;
@@ -149,6 +150,7 @@ public class Side {
                     paused = true;
                     currentInventory = InventoryType.NONE;
                     player.closeInventory();
+                    Sponge.getScheduler().createTaskBuilder().execute(player::closeInventory).delayTicks(1).submit(SafeTrade.getPlugin());
                     break;
             }
         }
