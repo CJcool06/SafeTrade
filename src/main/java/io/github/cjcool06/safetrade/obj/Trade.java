@@ -359,7 +359,7 @@ public class Trade {
                         Sponge.getScheduler().createTaskBuilder().execute(this::reformatInventory).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Main.getPause()) && state == TradeState.TRADING) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventory(InventoryType.NONE)).delayTicks(1).submit(SafeTrade.getPlugin());
+                        side.changeInventory(InventoryType.NONE);
                     }
                     else if (item.equalTo(ItemUtils.Main.getQuit()) && state == TradeState.TRADING) {
                         Sponge.getScheduler().createTaskBuilder().execute(this::forceEnd).delayTicks(1).submit(SafeTrade.getPlugin());
