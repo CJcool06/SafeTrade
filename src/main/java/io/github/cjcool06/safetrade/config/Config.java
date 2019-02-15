@@ -13,6 +13,8 @@ public class Config {
     private static CommentedConfigurationNode node;
 
     public static String prefix = "&9&lSafeTrade &7&l>> &r";
+    public static boolean showEggStats = false;
+    public static boolean showEggName = true;
     public static boolean gcLogsEnabled = false;
     public static int gcLogsExpiryTime = 31;
 
@@ -27,6 +29,8 @@ public class Config {
             }
             else {
                 prefix = node.getNode("Prefix").getString(prefix);
+                showEggStats = node.getNode("ShowEggStats").getBoolean(showEggStats);
+                showEggName = node.getNode("ShowEggName").getBoolean();
                 gcLogsEnabled = node.getNode("GarbageCollector", "Logs", "Enabled").getBoolean(gcLogsEnabled);
                 gcLogsExpiryTime = node.getNode("GarbageCollector", "Logs", "ExpiryTime").getInt(gcLogsExpiryTime);
             }
@@ -38,6 +42,8 @@ public class Config {
     public static void save() {
         try {
             node.getNode("Prefix").setValue(prefix);
+            node.getNode("ShowEggStats").setValue(showEggStats);
+            node.getNode("ShowEggName").setValue(showEggName);
             node.getNode("GarbageCollector", "Logs", "Enabled").setValue(gcLogsEnabled);
             node.getNode("GarbageCollector", "Logs", "ExpiryTime").setValue(gcLogsExpiryTime);
             loader.save(node);

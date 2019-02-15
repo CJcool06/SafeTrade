@@ -4,7 +4,7 @@
     "name": "SafeTrade",
     "description": "Trade Pokemon, Items, and Money safely",
     "version": "${version}",
-    "mcversion": "1.12.2",
+    "mcversion": "${mcversion}",
     "url": "",
     "updateUrl": "",
     "authorList": [

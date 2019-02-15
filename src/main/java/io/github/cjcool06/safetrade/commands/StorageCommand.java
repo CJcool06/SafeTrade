@@ -1,6 +1,7 @@
 package io.github.cjcool06.safetrade.commands;
 
 import com.google.common.collect.ImmutableMap;
+import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
 import io.github.cjcool06.safetrade.obj.CommandWrapper;
 import io.github.cjcool06.safetrade.obj.PlayerStorage;
 import io.github.cjcool06.safetrade.trackers.Tracker;
@@ -66,6 +67,11 @@ public class StorageCommand implements CommandExecutor {
 
             for (ItemStackSnapshot snapshot : storage.getItems()) {
                 src.sendMessage(Text.of(TextColors.GREEN, snapshot.getQuantity() + "x ", TextColors.AQUA, snapshot.getTranslation().get()));
+            }
+            src.sendMessage(Text.of());
+
+            for (Pokemon pokemon : storage.getPokemons()) {
+                src.sendMessage(Text.of(TextColors.AQUA, pokemon.getSpecies().getLocalizedName()));
             }
             src.sendMessage(Text.of());
 

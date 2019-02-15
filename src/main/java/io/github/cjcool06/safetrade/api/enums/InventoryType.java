@@ -18,9 +18,19 @@ public enum InventoryType {
     ITEM,
 
     /**
+     * The Pokemon trade inventory.
+     */
+    POKEMON,
+
+    /**
      * The money inventory.
      */
     MONEY,
+
+    /**
+     * The player's PC inventory.
+     */
+    PC,
 
     /**
      * None.

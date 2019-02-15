@@ -6,6 +6,7 @@ import io.github.cjcool06.safetrade.api.events.trade.ConnectionEvent;
 import io.github.cjcool06.safetrade.obj.Side;
 import io.github.cjcool06.safetrade.obj.Trade;
 import io.github.cjcool06.safetrade.trackers.Tracker;
+import io.github.cjcool06.safetrade.utils.Utils;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
@@ -133,6 +134,16 @@ public class TradeCommand implements CommandExecutor {
     public static void acceptInvitation(Player requester, Player requestee) {
         if (tradeRequests.containsKey(requester) && tradeRequests.get(requester).contains(requestee)) {
             tradeRequests.get(requester).remove(requestee);
+            if (Utils.isPlayerOccupied(requester)) {
+                requester.sendMessage(Text.of(TextColors.RED, requestee.getName() + " has accepted your SafeTrade request, but you are otherwise occupied."));
+                requestee.sendMessage(Text.of(TextColors.RED, "You have accepted " + requester.getName() + "'s SafeTrade request, but they are otherwise occupied."));
+                return;
+            }
+            if (Utils.isPlayerOccupied(requestee)) {
+                requester.sendMessage(Text.of(TextColors.RED, requestee.getName() + " has accepted your SafeTrade request, but they are otherwise occupied."));
+                requestee.sendMessage(Text.of(TextColors.RED, "You have accepted " + requester.getName() + "'s SafeTrade request, but you are otherwise occupied."));
+                return;
+            }
 
             // The initial open needs to be like this, otherwise players will be flagged as paused unless they pause or close inv and resume.
             // This is because no player cause is given to the InteractInventoryEvent.Open event. Not sure why.
@@ -143,13 +154,13 @@ public class TradeCommand implements CommandExecutor {
                 side0.setPaused(false);
                 trade.reformatInventory();
                 side0.changeInventory(InventoryType.MAIN);
-                Sponge.getEventManager().post(new ConnectionEvent.Join.Post(side0));
+                SafeTrade.EVENT_BUS.post(new ConnectionEvent.Join.Post(side0));
             });
             side1.getPlayer().ifPresent(player -> {
                 side1.setPaused(false);
                 trade.reformatInventory();
                 side1.changeInventory(InventoryType.MAIN);
-                Sponge.getEventManager().post(new ConnectionEvent.Join.Post(side1));
+                SafeTrade.EVENT_BUS.post(new ConnectionEvent.Join.Post(side1));
             });
         }
     }

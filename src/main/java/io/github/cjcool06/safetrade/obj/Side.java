@@ -1,8 +1,12 @@
 package io.github.cjcool06.safetrade.obj;
 
+import com.pixelmonmod.pixelmon.Pixelmon;
+import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.InventoryType;
 import io.github.cjcool06.safetrade.api.events.trade.InventoryChangeEvent;
 import io.github.cjcool06.safetrade.helpers.InventoryHelper;
+import io.github.cjcool06.safetrade.utils.Utils;
+import net.minecraft.entity.player.EntityPlayerMP;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
@@ -122,11 +126,12 @@ public class Side {
      * @param inventoryType The new inventory
      */
     public void changeInventory(InventoryType inventoryType) {
-        if (Sponge.getEventManager().post(new InventoryChangeEvent.Pre(this, inventoryType))) {
+        if (SafeTrade.EVENT_BUS.post(new InventoryChangeEvent.Pre(this, inventoryType))) {
             return;
         }
         if (getPlayer().isPresent()) {
             Player player = getPlayer().get();
+            Utils.recallAllPokemon(Pixelmon.storageManager.getParty((EntityPlayerMP)player));
             switch (inventoryType) {
                 case MAIN:
                     currentInventory = InventoryType.MAIN;
@@ -136,6 +141,10 @@ public class Side {
                     currentInventory = InventoryType.OVERVIEW;
                     player.openInventory(parentTrade.getOverviewInventory());
                     break;
+                case POKEMON:
+                    currentInventory = InventoryType.POKEMON;
+                    player.openInventory(vault.pokemonStorage);
+                    break;
                 case ITEM:
                     currentInventory = InventoryType.ITEM;
                     player.openInventory(vault.itemStorage);
@@ -144,11 +153,14 @@ public class Side {
                     currentInventory = InventoryType.MONEY;
                     player.openInventory(InventoryHelper.buildAndGetMoneyInventory(this));
                     break;
+                case PC:
+                    currentInventory = InventoryType.PC;
+                    player.openInventory(InventoryHelper.buildAndGetPCInventory(this));
+                    break;
                 case NONE:
                     ready = false;
                     paused = true;
                     currentInventory = InventoryType.NONE;
-                    player.closeInventory();
                     break;
             }
         }
@@ -160,6 +172,7 @@ public class Side {
      * @param inventoryType The new inventory
      */
     public void changeInventoryForViewer(Player player, InventoryType inventoryType) {
+        Utils.recallAllPokemon(Pixelmon.storageManager.getParty((EntityPlayerMP)player));
         switch (inventoryType) {
             case MAIN:
                 player.openInventory(parentTrade.getTradeInventory());
@@ -167,11 +180,17 @@ public class Side {
             case OVERVIEW:
                 player.openInventory(parentTrade.getOverviewInventory());
                 break;
+            case POKEMON:
+                player.openInventory(vault.pokemonStorage);
+                break;
             case ITEM:
                 player.openInventory(vault.itemStorage);
                 break;
             case MONEY:
                 player.openInventory(InventoryHelper.buildAndGetMoneyInventory(this));
+                break;
+            case PC:
+                player.openInventory(InventoryHelper.buildAndGetPCInventory(this));
                 break;
         }
     }
