@@ -1,9 +1,5 @@
 package io.github.cjcool06.safetrade.helpers;
 
-import com.pixelmonmod.pixelmon.Pixelmon;
-import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
-import com.pixelmonmod.pixelmon.api.storage.PCStorage;
-import com.pixelmonmod.pixelmon.storage.PlayerPartyStorage;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.InventoryType;
 import io.github.cjcool06.safetrade.api.enums.TradeState;
@@ -13,7 +9,6 @@ import io.github.cjcool06.safetrade.api.events.trade.ViewerEvent;
 import io.github.cjcool06.safetrade.obj.Side;
 import io.github.cjcool06.safetrade.obj.Trade;
 import io.github.cjcool06.safetrade.utils.ItemUtils;
-import io.github.cjcool06.safetrade.utils.Utils;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.type.DyeColors;
 import org.spongepowered.api.entity.living.player.Player;
@@ -35,7 +30,9 @@ import org.spongepowered.api.text.format.TextColors;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Optional;
 
 /**
  * This class is to simply prevent these methods from unnecessarily cluttering up other classes
@@ -94,58 +91,6 @@ public class InventoryHelper {
         return inventory;
     }
 
-    public static Inventory buildAndGetPCInventory(Side side) {
-        Inventory inventory = Inventory.builder()
-                .property(InventoryTitle.PROPERTY_NAME, InventoryTitle.of(Text.of(TextColors.DARK_AQUA, "PC")))
-                .property(InventoryDimension.PROPERTY_NAME, new InventoryDimension(9,6))
-                .of(InventoryArchetypes.MENU_GRID)
-                .listener(ClickInventoryEvent.class, event -> handlePCClick(side, event))
-                .listener(InteractInventoryEvent.Close.class, event -> handleBasicClose(side.parentTrade, InventoryType.PC, event))
-                .listener(InteractInventoryEvent.Open.class, event -> handleOpen(side.parentTrade, event))
-                .build(SafeTrade.getPlugin());
-
-        currentPage.put(side, 1);
-        updatePC(inventory, side);
-
-        return inventory;
-    }
-
-    private static void updatePC(Inventory inventory, Side side) {
-        LinkedHashMap<ItemStack, Pokemon>[] pcArr = Utils.generatePCMaps(side);
-        LinkedHashMap<ItemStack, Pokemon> partyMap = pcArr[0];
-        LinkedHashMap<ItemStack, Pokemon> pcMap = pcArr[1];
-        Iterator<ItemStack> partyIter = partyMap.keySet().iterator();
-        Iterator<ItemStack> pcIter = pcMap.keySet().iterator();
-        int page = currentPage.get(side);
-
-        for (int j = 0; j < (page-1)*30 && pcIter.hasNext(); j++) {
-            pcIter.next();
-        }
-
-        inventory.slots().forEach(slot -> {
-            int i = slot.getProperty(SlotIndex.class, "slotindex").get().getValue();
-
-            if ((i >= 3 && i <= 8) || (i >= 12 && i <= 17) || (i >= 21 && i <= 26) || (i >= 30 && i <= 35) || (i >= 39 && i <= 44)) {
-                slot.set(pcIter.hasNext() ? pcIter.next() : ItemStack.empty());
-            }
-            else if (i == 9 || i == 10 || i == 18 || i == 19 || i == 27 || i == 28) {
-                slot.set(partyIter.hasNext() ? partyIter.next() : ItemUtils.Other.getFiller(DyeColors.GRAY));
-            }
-            else if (i == 45) {
-                slot.set(ItemUtils.Other.getBackButton());
-            }
-            else if (i == 48) {
-                slot.set(ItemUtils.PC.getPreviousPage(page));
-            }
-            else if (i == 50) {
-                slot.set(ItemUtils.PC.getNextPage(page));
-            }
-            else if (i <= 53) {
-                slot.set(ItemUtils.Other.getFiller(DyeColors.GRAY));
-            }
-        });
-    }
-
     public static Inventory buildAndGetOverviewInventory(Trade trade) {
         Inventory inventory = Inventory.builder()
                 .property(InventoryTitle.PROPERTY_NAME, InventoryTitle.of(Text.of(TextColors.DARK_AQUA, "Trade Overview")))
@@ -166,36 +111,30 @@ public class InventoryHelper {
             int i = slot.getProperty(SlotIndex.class, "slotindex").get().getValue();
 
             // Side 1
-            if ((i >= 0 && i <= 3) || (i >= 18 && i <= 21)) {
+            if ((i >= 0 && i <= 3) || i == 9 || (i >= 18 && i <= 21)) {
                 slot.set(ItemUtils.Overview.getConfirmationStatus(trade.getSides()[0]));
             }
-            else if (i == 9) {
+            else if (i == 10) {
                 slot.set(ItemUtils.Main.getMoneyStorage(trade.getSides()[0]));
             }
-            else if (i == 10) {
-                slot.set(ItemUtils.Main.getItemStorage(trade.getSides()[0]));
-            }
             else if (i == 11) {
-                slot.set(ItemUtils.Main.getPokemonStorage(trade.getSides()[0]));
+                slot.set(ItemUtils.Main.getItemStorage(trade.getSides()[0]));
             }
             else if (i == 12) {
                 slot.set(ItemUtils.Main.getHead(trade.getSides()[0]));
             }
 
             // Side 2
-            else if ((i >= 5 && i <= 8) || (i >= 23 && i <= 26)) {
+            else if ((i >= 5 && i <= 8) || i == 17 || (i >= 23 && i <= 26)) {
                 slot.set(ItemUtils.Overview.getConfirmationStatus(trade.getSides()[1]));
             }
             else if (i == 14) {
                 slot.set(ItemUtils.Main.getHead(trade.getSides()[1]));
             }
             else if (i == 15) {
-                slot.set(ItemUtils.Main.getPokemonStorage(trade.getSides()[1]));
-            }
-            else if (i == 16) {
                 slot.set(ItemUtils.Main.getItemStorage(trade.getSides()[1]));
             }
-            else if (i == 17) {
+            else if (i == 16) {
                 slot.set(ItemUtils.Main.getMoneyStorage(trade.getSides()[1]));
             }
 
@@ -249,14 +188,8 @@ public class InventoryHelper {
                         else if (item.equalTo(ItemUtils.Main.getItemStorage(side))) {
                             Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventoryForViewer(player, InventoryType.ITEM)).delayTicks(1).submit(SafeTrade.getPlugin());
                         }
-                        else if (item.equalTo(ItemUtils.Main.getPokemonStorage(side))) {
-                            Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventoryForViewer(player, InventoryType.POKEMON)).delayTicks(1).submit(SafeTrade.getPlugin());
-                        }
                         else if (item.equalTo(ItemUtils.Main.getItemStorage(otherSide))) {
                             Sponge.getScheduler().createTaskBuilder().execute(() -> otherSide.changeInventoryForViewer(player, InventoryType.ITEM)).delayTicks(1).submit(SafeTrade.getPlugin());
-                        }
-                        else if (item.equalTo(ItemUtils.Main.getPokemonStorage(otherSide))) {
-                            Sponge.getScheduler().createTaskBuilder().execute(() -> otherSide.changeInventoryForViewer(player, InventoryType.POKEMON)).delayTicks(1).submit(SafeTrade.getPlugin());
                         }
                     });
                 });
@@ -273,29 +206,29 @@ public class InventoryHelper {
                 // If the side is paused, it means that they are reconnecting to the trade.
                 // If the side is not paused, it means they have been transferred from another trade-related inventory and is not considered as a trade connection
                 if (side.isPaused()) {
-                    if (SafeTrade.EVENT_BUS.post(new ConnectionEvent.Join.Pre(side))) {
+                    if (Sponge.getEventManager().post(new ConnectionEvent.Join.Pre(side))) {
                         event.setCancelled(true);
                         return;
                     }
                     side.setPaused(false);
-                    SafeTrade.EVENT_BUS.post(new ConnectionEvent.Join.Post(side));
+                    Sponge.getEventManager().post(new ConnectionEvent.Join.Post(side));
                     if (side.currentInventory == InventoryType.MAIN) {
                         Sponge.getScheduler().createTaskBuilder().execute(trade::reformatInventory).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                 }
                 else {
-                    Sponge.getScheduler().createTaskBuilder().execute(() -> SafeTrade.EVENT_BUS.post(new InventoryChangeEvent.Post(side))).delayTicks(1).submit(SafeTrade.getPlugin());
+                    Sponge.getScheduler().createTaskBuilder().execute(() -> Sponge.getEventManager().post(new InventoryChangeEvent.Post(side))).delayTicks(1).submit(SafeTrade.getPlugin());
                 }
             }
             // An unauthorized player is attempting to open the trade unexpectedly
             // This will happen if the player doesn't come through Trade#addViewer
             else if (!trade.getViewers().contains(player)) {
-                if (SafeTrade.EVENT_BUS.post(new ViewerEvent.Add.Pre(trade, player))) {
+                if (Sponge.getEventManager().post(new ViewerEvent.Add.Pre(trade, player))) {
                     event.setCancelled(true);
                     return;
                 }
                 trade.addViewer(player, false);
-                SafeTrade.EVENT_BUS.post(new ViewerEvent.Add.Post(trade, player));
+                Sponge.getEventManager().post(new ViewerEvent.Add.Post(trade, player));
             }
         });
     }
@@ -315,7 +248,7 @@ public class InventoryHelper {
                     side.setPaused(true);
                     side.currentInventory = InventoryType.NONE;
                     Sponge.getScheduler().createTaskBuilder().execute(side.parentTrade::reformatInventory).delayTicks(1).submit(SafeTrade.getPlugin());
-                    SafeTrade.EVENT_BUS.post(new ConnectionEvent.Left(side));
+                    Sponge.getEventManager().post(new ConnectionEvent.Left(side));
                 }
             }
             // Else, the player must be a viewer
@@ -326,14 +259,14 @@ public class InventoryHelper {
                     // as the player will have the unrelated inventory open, therefore the player will continue to be considered as a viewer.
                     // From what I can think of there is no inherent harm due to this happening, just something to keep in mind.
                     if (!player.isViewingInventory()) {
-                        if (SafeTrade.EVENT_BUS.post(new ViewerEvent.Remove.Pre(trade, player))) {
+                        if (Sponge.getEventManager().post(new ViewerEvent.Remove.Pre(trade, player))) {
                             if (player.isOnline()) {
                                 trade.getSides()[0].changeInventoryForViewer(player, inventoryType);
                             }
                         }
                         else {
                             trade.removeViewer(player, false);
-                            SafeTrade.EVENT_BUS.post(new ViewerEvent.Remove.Post(trade, player));
+                            Sponge.getEventManager().post(new ViewerEvent.Remove.Post(trade, player));
                         }
                     }
                 }).delayTicks(1).submit(SafeTrade.getPlugin());
@@ -415,88 +348,6 @@ public class InventoryHelper {
                                 }
 
                                 break;
-                            }
-                        }
-                    }
-                });
-            });
-        });
-    }
-
-    public static void handlePCClick(Side side, ClickInventoryEvent event) {
-        LinkedHashMap<ItemStack, Pokemon>[] pcArr = Utils.generatePCMaps(side);
-        LinkedHashMap<ItemStack, Pokemon> partyMap = pcArr[0];
-        LinkedHashMap<ItemStack, Pokemon> pcMap = pcArr[1];
-        int page = currentPage.get(side);
-
-        event.setCancelled(true);
-        event.getCause().first(Player.class).ifPresent(player -> {
-            event.getTransactions().forEach(transaction -> {
-                transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
-                    ItemStack item = transaction.getOriginal().createStack();
-
-                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventoryForViewer(player, InventoryType.POKEMON)).delayTicks(1).submit(SafeTrade.getPlugin());
-                    }
-                    // If player is not the in the side of this vault, or the if the vault is locked, or they didn't left/right click, nothing will happen.
-                    // Checking for player is redundant when going through the main trade inventory, but I'll keep it here in-case a player somehow opens another side's pc inventory
-                    else if ((player.getUniqueId().equals(side.sideOwnerUUID) && !side.vault.isLocked() && event instanceof ClickInventoryEvent.Primary)
-                            && side.parentTrade.getState() == TradeState.TRADING) {
-                        boolean continueChecks = true;
-                        PlayerPartyStorage partyStorage = Pixelmon.storageManager.getParty(side.getUser().get().getUniqueId());
-                        PCStorage pcStorage = Pixelmon.storageManager.getPCForPlayer(side.getUser().get().getUniqueId());
-
-                        for (ItemStack itemStack : partyMap.keySet()) {
-                            if (itemStack.equalTo(item)) {
-                                Pokemon pokemon = partyMap.get(itemStack);
-
-                                if (Utils.getAllPokemon(partyStorage).contains(pokemon)) {
-                                    if (side.vault.addPokemon(pokemon)) {
-                                        partyStorage.set(partyStorage.getPosition(pokemon), null);
-                                        Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
-                                    }
-                                }
-                                continueChecks = false;
-                                break;
-                            }
-                        }
-                        for (ItemStack itemStack : pcMap.keySet()) {
-                            if (!continueChecks) {
-                                break;
-                            }
-                            if (itemStack.equalTo(item)) {
-                                Pokemon pokemon = pcMap.get(itemStack);
-                                List<Pokemon> pcPokemon = Utils.getAllPokemon(pcStorage);
-                                if (pcPokemon.contains(pokemon)) {
-                                    if (side.vault.addPokemon(pokemon)) {
-                                        pcStorage.set(pcStorage.getPosition(pokemon), null);
-                                        Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
-                                    }
-                                }
-                                continueChecks = false;
-                                break;
-                            }
-                        }
-
-                        if (continueChecks) {
-                            if (item.equalTo(ItemUtils.PC.getNextPage(page))) {
-                                if (page*30 >= pcMap.size()) {
-                                    currentPage.put(side, 1);
-                                }
-                                else {
-                                    currentPage.put(side, page+1);
-                                }
-                                Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
-                            }
-                            else if (item.equalTo(ItemUtils.PC.getPreviousPage(page))) {
-                                if (page > 1) {
-                                    currentPage.put(side, page-1);
-                                }
-                                else {
-                                    int num = pcMap.size() / 30;
-                                    currentPage.put(side, num+1);
-                                }
-                                Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
                             }
                         }
                     }

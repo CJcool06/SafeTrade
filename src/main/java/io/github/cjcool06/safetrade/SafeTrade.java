@@ -1,17 +1,14 @@
 package io.github.cjcool06.safetrade;
 
 import com.google.inject.Inject;
-import com.pixelmonmod.pixelmon.Pixelmon;
 import io.github.cjcool06.safetrade.commands.TradeCommand;
 import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.listeners.ConnectionListener;
-import io.github.cjcool06.safetrade.listeners.EvolutionListener;
 import io.github.cjcool06.safetrade.listeners.TradeCreationListener;
 import io.github.cjcool06.safetrade.listeners.ViewerConnectionListener;
 import io.github.cjcool06.safetrade.managers.DataManager;
 import io.github.cjcool06.safetrade.obj.Trade;
 import io.github.cjcool06.safetrade.trackers.Tracker;
-import net.minecraftforge.fml.common.eventhandler.EventBus;
 import ninja.leaping.configurate.objectmapping.GuiceObjectMapperFactory;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
@@ -41,10 +38,9 @@ import java.util.concurrent.TimeUnit;
 public class SafeTrade {
     public static final String ID = "safetrade";
     public static final String NAME = "SafeTrade";
-    public static final String VERSION = "2.0.0";
+    public static final String VERSION = "2.0.1-SPONGE";
     public static final String DESCRIPTION = "Trade Pokemon, Items, and Money safely";
     public static final String AUTHORS = "CJcool06";
-    public static final EventBus EVENT_BUS = new EventBus();
     private static SafeTrade plugin;
     private EconomyService economyService = null;
 
@@ -66,11 +62,8 @@ public class SafeTrade {
         plugin = this;
 
         Sponge.getEventManager().registerListeners(this, new ConnectionListener());
-
-        Pixelmon.EVENT_BUS.register(new EvolutionListener());
-
-        EVENT_BUS.register(new TradeCreationListener());
-        EVENT_BUS.register(new ViewerConnectionListener());
+        Sponge.getEventManager().registerListeners(this, new ViewerConnectionListener());
+        Sponge.getEventManager().registerListeners(this, new TradeCreationListener());
 
         Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade");
 

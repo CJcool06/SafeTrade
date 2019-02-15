@@ -2,24 +2,44 @@ package io.github.cjcool06.safetrade.api.events.trade;
 
 import io.github.cjcool06.safetrade.api.enums.TradeResult;
 import io.github.cjcool06.safetrade.obj.Trade;
-import net.minecraftforge.fml.common.eventhandler.Cancelable;
-import net.minecraftforge.fml.common.eventhandler.Event;
+import org.spongepowered.api.Sponge;
+import org.spongepowered.api.event.Cancellable;
+import org.spongepowered.api.event.cause.Cause;
+import org.spongepowered.api.event.impl.AbstractEvent;
 
-public class TradeEvent extends Event {
+public class TradeEvent extends AbstractEvent {
 
     public final Trade trade;
+    private final Cause cause;
 
     private TradeEvent(Trade trade) {
         this.trade = trade;
+        this.cause = Sponge.getCauseStackManager().getCurrentCause();
+    }
+
+    @Override
+    public Cause getCause() {
+        return cause;
     }
 
     /**
      * Posted before the {@link Trade} is executed.
      */
-    @Cancelable
-    public static class Executing extends TradeEvent {
+    public static class Executing extends TradeEvent implements Cancellable {
+        private boolean cancelled = false;
+
         public Executing(Trade trade) {
             super(trade);
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return cancelled;
+        }
+
+        @Override
+        public void setCancelled(boolean cancel) {
+            cancelled = cancel;
         }
     }
 

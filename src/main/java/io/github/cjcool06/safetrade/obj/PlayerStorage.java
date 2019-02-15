@@ -4,14 +4,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import com.pixelmonmod.pixelmon.Pixelmon;
-import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
-import com.pixelmonmod.pixelmon.storage.PlayerPartyStorage;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.CommandType;
 import io.github.cjcool06.safetrade.managers.DataManager;
-import io.github.cjcool06.safetrade.utils.GsonUtils;
-import net.minecraft.nbt.NBTTagCompound;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.persistence.DataFormats;
 import org.spongepowered.api.entity.living.player.Player;
@@ -30,7 +25,7 @@ import java.util.*;
 // TODO: Make PlayerStorage GUI that admins can edit
 
 /**
- * A PlayerStorage represents a storage for a {@link User} that holds {@link ItemStackSnapshot}s, {@link Pokemon}, and {@link CommandWrapper}s.
+ * A PlayerStorage represents a storage for a {@link User} that holds {@link ItemStackSnapshot}s and {@link CommandWrapper}s.
  *
  * <p>PlayerStorage data persists across restarts.</p>
  */
@@ -38,7 +33,6 @@ public class PlayerStorage {
     public final UUID playerUUID;
 
     private final List<ItemStackSnapshot> items = new ArrayList<>();
-    private final List<Pokemon> pokemons = new ArrayList<>();
     private final List<CommandWrapper> commands = new ArrayList<>();
 
     private boolean needsSaving = false;
@@ -47,10 +41,9 @@ public class PlayerStorage {
         this.playerUUID = user.getUniqueId();
     }
 
-    private PlayerStorage(UUID uuid, List<ItemStackSnapshot> items, List<Pokemon> pokemons, List<CommandWrapper> commands) {
+    private PlayerStorage(UUID uuid, List<ItemStackSnapshot> items, List<CommandWrapper> commands) {
         this.playerUUID = uuid;
         this.items.addAll(items);
-        this.pokemons.addAll(pokemons);
         this.commands.addAll(commands);
     }
 
@@ -175,74 +168,6 @@ public class PlayerStorage {
     }
 
     /**
-     * Gets all {@link Pokemon}s in this storage.
-     *
-     * @return An unmodifiable list of pokemon
-     */
-    public List<Pokemon> getPokemons() {
-        return Collections.unmodifiableList(pokemons);
-    }
-
-    /**
-     * Adds a {@link Pokemon} to this storage.
-     *
-     * @param pokemon The pokemon
-     * @return True if successfully added
-     */
-    public boolean addPokemon(Pokemon pokemon) {
-        needsSaving = true;
-        return pokemons.add(pokemon);
-    }
-
-    /**
-     * Removes a {@link Pokemon} from this storage.
-     *
-     * @param pokemon The pokemon
-     * @return True if successfully removed
-     */
-    public boolean removePokemon(Pokemon pokemon) {
-        needsSaving = true;
-        return pokemons.remove(pokemon);
-    }
-
-    /**
-     * Clears all pokemon from this storage.
-     */
-    public void clearPokemon() {
-        needsSaving = true;
-        pokemons.clear();
-    }
-
-    /**
-     * Puts as many of the {@link Pokemon} in this storage in to the player's {@link com.pixelmonmod.pixelmon.api.storage.PokemonStorage}
-     * and removes those {@link Pokemon} from this storage.
-     *
-     * <p>If the player's {@link com.pixelmonmod.pixelmon.api.storage.PokemonStorage} becomes full it will halt and return.</p>
-     *
-     * @return A list of the {@link Pokemon} that were successfully added to the player's {@link com.pixelmonmod.pixelmon.api.storage.PokemonStorage}
-     */
-    public List<Pokemon> givePokemon() {
-        List<Pokemon> successes = new ArrayList<>();
-        PlayerPartyStorage partyStorage = Pixelmon.storageManager.getParty(playerUUID);
-        Iterator<Pokemon> iter = pokemons.iterator();
-
-        while (iter.hasNext()) {
-            Pokemon pokemon = iter.next();
-            if (partyStorage.add(pokemon)) {
-                successes.add(pokemon);
-                iter.remove();
-                needsSaving = true;
-            }
-            else {
-                // There are no more spaces in the player's pokemon storage, so no point continuing the iteration.
-                break;
-            }
-        }
-
-        return successes;
-    }
-
-    /**
      * Gets all {@link CommandWrapper}s in this storage.
      *
      * @return An unmodifiable list of command wrappers
@@ -287,7 +212,7 @@ public class PlayerStorage {
      * @return True if empty
      */
     public boolean isEmpty() {
-        return items.isEmpty() && pokemons.isEmpty() && commands.isEmpty();
+        return items.isEmpty() && commands.isEmpty();
     }
 
     /**
@@ -345,10 +270,6 @@ public class PlayerStorage {
             commandsArr.add(cmdObj);
         }
 
-        for (Pokemon pokemon : pokemons) {
-            pokemonsArr.add(GsonUtils.serialize(pokemon.writeToNBT(new NBTTagCompound())));
-        }
-
         for (ItemStackSnapshot snapshot : items) {
             try {
                 itemsArr.add(DataFormats.JSON.write(snapshot.toContainer()));
@@ -373,7 +294,6 @@ public class PlayerStorage {
         try {
             UUID playerUUID = UUID.fromString(jsonObject.get("PlayerUUID").getAsString());
             List<ItemStackSnapshot> items = new ArrayList<>();
-            List<Pokemon> pokemons = new ArrayList<>();
             List<CommandWrapper> commands = new ArrayList<>();
 
             for (JsonElement element : jsonObject.get("Commands").getAsJsonArray()) {
@@ -383,15 +303,11 @@ public class PlayerStorage {
                 }
             }
 
-            for (JsonElement element : jsonObject.get("Pokemon").getAsJsonArray()) {
-                pokemons.add(Pixelmon.pokemonFactory.create(GsonUtils.deserialize(element.getAsString())));
-            }
-
             for (JsonElement element : jsonObject.get("Items").getAsJsonArray()) {
                 items.add(Sponge.getDataManager().deserialize(ItemStackSnapshot.class, DataFormats.JSON.read(element.getAsString())).get());
             }
 
-            return new PlayerStorage(playerUUID, items, pokemons, commands);
+            return new PlayerStorage(playerUUID, items, commands);
         } catch (Exception e) {
             SafeTrade.getLogger().warn("There was a problem deserialising a PlayerStorage from a container.");
             e.printStackTrace();

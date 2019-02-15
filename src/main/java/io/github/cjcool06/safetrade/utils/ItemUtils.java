@@ -3,7 +3,6 @@ package io.github.cjcool06.safetrade.utils;
 import com.google.common.collect.Lists;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.TradeState;
-import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.obj.Side;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.key.Keys;
@@ -12,7 +11,6 @@ import org.spongepowered.api.data.manipulator.mutable.SkullData;
 import org.spongepowered.api.data.type.DyeColor;
 import org.spongepowered.api.data.type.DyeColors;
 import org.spongepowered.api.data.type.SkullTypes;
-import org.spongepowered.api.item.ItemType;
 import org.spongepowered.api.item.ItemTypes;
 import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.profile.GameProfile;
@@ -48,7 +46,7 @@ public class ItemUtils {
         public static ItemStack getQuit() {
             ItemStack item = ItemStack.of(ItemTypes.BARRIER, 1);
             item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.RED, "Quit"));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "End the trade and get your items, money, and Pokemon back")));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "End the trade and get your items and money back")));
             return item;
         }
 
@@ -60,7 +58,7 @@ public class ItemUtils {
             skinData.set(Keys.REPRESENTED_PLAYER, GameProfile.of(side.getUser().get().getUniqueId()));
             itemStack.offer(skinData);
             itemStack.offer(Keys.DISPLAY_NAME, Text.of(TextColors.DARK_AQUA, side.getUser().get().getName()));
-            itemStack.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This side of the trade holds the items, money, and Pokemon that " +
+            itemStack.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This side of the trade holds the items and money that " +
                     side.getUser().get().getName() + " is willing to trade.")));
             return itemStack;
         }
@@ -80,13 +78,6 @@ public class ItemUtils {
             ItemStack item = ItemStack.of(ItemTypes.CHEST, 1);
             item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Items"));
             item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Click to view the items that " + side.getUser().get().getName() + " wants to trade")));
-            return item;
-        }
-
-        public static ItemStack getPokemonStorage(Side side) {
-            ItemStack item = ItemStack.of(ItemTypes.CHEST, 1);
-            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Pokemon"));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Click to view the Pokemon that " + side.getUser().get().getName() + " wants to trade")));
             return item;
         }
 
@@ -141,54 +132,6 @@ public class ItemUtils {
                     Text.of(TextColors.GREEN, "Left-Click: ", TextColors.GRAY, "Adds ", currency.getPluralDisplayName()),
                     Text.of(TextColors.RED, "Right-Click: ", TextColors.GRAY, "Removes ", currency.getPluralDisplayName())
             ));
-            return item;
-        }
-    }
-
-    public static class Pokemon {
-
-        public static ItemStack getPC() {
-            ItemStack item = ItemStack.of(Sponge.getRegistry().getType(ItemType.class, "pixelmon:pc").get(), 1);
-            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Open PC"));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Trade Pokemon from your PC")));
-            return item;
-        }
-
-        public static ItemStack getPokemonIcon(com.pixelmonmod.pixelmon.api.pokemon.Pokemon pokemon) {
-            ItemStack pokemonIcon = Utils.getPicture(pokemon);
-            if (pokemon.isEgg()) {
-                pokemonIcon.offer(Keys.DISPLAY_NAME, Text.of(TextColors.LIGHT_PURPLE, Config.showEggName ? pokemon.getSpecies().getLocalizedName() + " Egg" : "Egg"));
-            }
-            else {
-                pokemonIcon.offer(Keys.DISPLAY_NAME, Text.of(TextColors.LIGHT_PURPLE, pokemon.getSpecies().getLocalizedName()));
-                pokemonIcon.offer(Keys.ITEM_LORE, Utils.getPokemonLore(pokemon));
-            }
-
-            return pokemonIcon;
-        }
-    }
-
-    public static class PC {
-
-        public static ItemStack getPartyInfo() {
-            ItemStack item = ItemStack.of(ItemTypes.PAPER, 1);
-            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Party Pokemon"));
-            return item;
-        }
-
-        public static ItemStack getNextPage(int currentPage) {
-            ItemStack item = ItemStack.of(ItemTypes.DYE, 1);
-            item.offer(Keys.DYE_COLOR, DyeColors.GREEN);
-            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GREEN, "Next Page"));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Current page: ", currentPage)));
-            return item;
-        }
-
-        public static ItemStack getPreviousPage(int currentPage) {
-            ItemStack item = ItemStack.of(ItemTypes.DYE, 1);
-            item.offer(Keys.DYE_COLOR, DyeColors.ORANGE);
-            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Previous Page"));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Current page: ", currentPage)));
             return item;
         }
     }

@@ -1,7 +1,5 @@
 package io.github.cjcool06.safetrade.obj;
 
-import com.pixelmonmod.pixelmon.entities.pixelmon.EntityPixelmon;
-import com.pixelmonmod.pixelmon.enums.EnumSpecies;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.InventoryType;
 import io.github.cjcool06.safetrade.api.enums.TradeResult;
@@ -11,11 +9,9 @@ import io.github.cjcool06.safetrade.api.events.trade.TradeCreationEvent;
 import io.github.cjcool06.safetrade.api.events.trade.TradeEvent;
 import io.github.cjcool06.safetrade.channels.TradeChannel;
 import io.github.cjcool06.safetrade.helpers.InventoryHelper;
-import io.github.cjcool06.safetrade.listeners.EvolutionListener;
 import io.github.cjcool06.safetrade.trackers.Tracker;
 import io.github.cjcool06.safetrade.utils.ItemUtils;
 import io.github.cjcool06.safetrade.utils.LogUtils;
-import net.minecraft.entity.player.EntityPlayerMP;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.type.DyeColors;
 import org.spongepowered.api.entity.living.player.Player;
@@ -72,7 +68,7 @@ public class Trade {
         overviewInventory = InventoryHelper.buildAndGetOverviewInventory(this);
 
         Tracker.addActiveTrade(this);
-        SafeTrade.EVENT_BUS.post(new TradeCreationEvent(this));
+        Sponge.getEventManager().post(new TradeCreationEvent(this));
     }
 
     /**
@@ -147,7 +143,7 @@ public class Trade {
         if (this.state != state) {
             TradeState oldState = this.state;
             this.state = state;
-            SafeTrade.EVENT_BUS.post(new StateChangedEvent(this, oldState, state));
+            Sponge.getEventManager().post(new StateChangedEvent(this, oldState, state));
         }
     }
 
@@ -157,7 +153,7 @@ public class Trade {
      * <p>The players cannot cancel the trade.</p>
      */
     public TradeResult executeTrade() {
-        if (SafeTrade.EVENT_BUS.post(new TradeEvent.Executing(this))) {
+        if (Sponge.getEventManager().post(new TradeEvent.Executing(this))) {
             return TradeResult.CANCELLED;
         }
         LogUtils.logTrade(this);
@@ -182,38 +178,14 @@ public class Trade {
 
         side0.getPlayer().ifPresent(player -> {
             storage0.giveItems();
-            storage0.givePokemon().forEach(pokemon -> {
-                // Requires tick delay otherwise the player will become glitched
-                Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                    EntityPixelmon pixelmon = pokemon.getOrSpawnPixelmon((EntityPlayerMP)player);
-                    if (pixelmon.testTradeEvolution(EnumSpecies.Abomasnow)) {
-                        EvolutionListener.ongoingEvolutions.add(pixelmon.getUniqueID());
-                    }
-                    else {
-                        pixelmon.unloadEntity();
-                    }
-                }).delayTicks(20).submit(SafeTrade.getPlugin());
-            });
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
         side1.getPlayer().ifPresent(player -> {
             storage1.giveItems();
-            storage1.givePokemon().forEach(pokemon -> {
-                // Requires tick delay otherwise the player will become glitched
-                Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                    EntityPixelmon pixelmon = pokemon.getOrSpawnPixelmon((EntityPlayerMP)player);
-                    if (pixelmon.testTradeEvolution(EnumSpecies.Abomasnow)) {
-                        EvolutionListener.ongoingEvolutions.add(pixelmon.getUniqueID());
-                    }
-                    else {
-                        pixelmon.unloadEntity();
-                    }
-                }).delayTicks(20).submit(SafeTrade.getPlugin());
-            });
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
-        SafeTrade.EVENT_BUS.post(new TradeEvent.Executed.SuccessfulTrade(this, TradeResult.SUCCESS));
 
+        Sponge.getEventManager().post(new TradeEvent.Executed.SuccessfulTrade(this, TradeResult.SUCCESS));
         return TradeResult.SUCCESS;
     }
 
@@ -230,19 +202,17 @@ public class Trade {
                 player.closeInventory();
                 PlayerStorage storage = Tracker.getOrCreateStorage(player);
                 storage.giveItems();
-                storage.givePokemon();
                 player.setMessageChannel(MessageChannel.TO_ALL);
             });
             sides[1].getPlayer().ifPresent(player -> {
                 player.closeInventory();
                 PlayerStorage storage = Tracker.getOrCreateStorage(player);
                 storage.giveItems();
-                storage.givePokemon();
                 player.setMessageChannel(MessageChannel.TO_ALL);
             });
         }).delayTicks(1).submit(SafeTrade.getPlugin());
 
-        SafeTrade.EVENT_BUS.post(new TradeEvent.Cancelled(this));
+        Sponge.getEventManager().post(new TradeEvent.Cancelled(this));
         return TradeResult.CANCELLED;
     }
 
@@ -370,14 +340,8 @@ public class Trade {
                     else if (item.equalTo(ItemUtils.Main.getItemStorage(side))) {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventory(InventoryType.ITEM)).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
-                    else if (item.equalTo(ItemUtils.Main.getPokemonStorage(side))) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventory(InventoryType.POKEMON)).delayTicks(1).submit(SafeTrade.getPlugin());
-                    }
                     else if (item.equalTo(ItemUtils.Main.getItemStorage(otherSide))) {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> otherSide.changeInventoryForViewer(player, InventoryType.ITEM)).delayTicks(1).submit(SafeTrade.getPlugin());
-                    }
-                    else if (item.equalTo(ItemUtils.Main.getPokemonStorage(otherSide))) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> otherSide.changeInventoryForViewer(player, InventoryType.POKEMON)).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                 }
                 // Viewers can use these buttons
@@ -386,16 +350,10 @@ public class Trade {
                     if (item.equalTo(ItemUtils.Main.getItemStorage(sides[0]))) {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> sides[0].changeInventoryForViewer(player, InventoryType.ITEM)).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
-                    else if (item.equalTo(ItemUtils.Main.getPokemonStorage(sides[0]))) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> sides[0].changeInventoryForViewer(player, InventoryType.POKEMON)).delayTicks(1).submit(SafeTrade.getPlugin());
-                    }
 
                     // Side 2
                     else if (item.equalTo(ItemUtils.Main.getItemStorage(sides[1]))) {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> sides[1].changeInventoryForViewer(player, InventoryType.ITEM)).delayTicks(1).submit(SafeTrade.getPlugin());
-                    }
-                    else if (item.equalTo(ItemUtils.Main.getPokemonStorage(sides[1]))) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> sides[1].changeInventoryForViewer(player, InventoryType.POKEMON)).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                 }
             });
@@ -419,16 +377,12 @@ public class Trade {
                 slot.set(ItemUtils.Main.getHead(sides[0]));
             }
             // Money storage
-            else if (i == 20) {
+            else if (i == 30) {
                 slot.set(ItemUtils.Main.getMoneyStorage(sides[0]));
             }
             // Item storage
             else if (i == 28) {
                 slot.set(ItemUtils.Main.getItemStorage(sides[0]));
-            }
-            // Pokemon storage
-            else if (i == 30) {
-                slot.set(ItemUtils.Main.getPokemonStorage(sides[0]));
             }
 
             // Side 2
@@ -441,16 +395,12 @@ public class Trade {
                 slot.set(ItemUtils.Main.getHead(sides[1]));
             }
             // Money storage
-            else if (i == 24) {
+            else if (i == 34) {
                 slot.set(ItemUtils.Main.getMoneyStorage(sides[1]));
             }
             // Item storage
             else if (i == 32) {
                 slot.set(ItemUtils.Main.getItemStorage(sides[1]));
-            }
-            // Pokemon storage
-            else if (i == 34) {
-                slot.set(ItemUtils.Main.getPokemonStorage(sides[1]));
             }
 
             // Rest
@@ -475,7 +425,7 @@ public class Trade {
                 slot.set(ItemUtils.Main.getPause());
             }
             // Filler
-            else if (i == 10 || i == 12 || i == 14 || i == 16 || i == 19 || i == 21 || i == 23 || i == 25 || i == 29 || i == 33 || (i >= 37 && i <= 39) || (i >= 41 && i <= 43)) {
+            else if (i <= 53) {
                 slot.set(ItemUtils.Other.getFiller(DyeColors.BLACK));
             }
         });

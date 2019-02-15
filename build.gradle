@@ -1,13 +1,6 @@
 buildscript {
     repositories {
         jcenter()
-        maven {
-            name = "forge"
-            url = "http://files.minecraftforge.net/maven"
-        }
-    }
-    dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
     }
 }
 
@@ -15,22 +8,13 @@ plugins {
     id 'org.spongepowered.plugin' version '0.8.1'
 }
 
-apply plugin: 'net.minecraftforge.gradle.forge'
 
-
-version = "1.12.2-2.0.0"
+version = "1.12.2-2.0.1-SPONGE"
 group = "io.github.cjcool06"
 archivesBaseName = "SafeTrade"
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
-
-
-minecraft {
-    version = "1.12.2-14.23.4.2705"
-    runDir = "run"
-    mappings = "snapshot_20171003"
-}
 
 repositories {
     mavenCentral()
@@ -40,16 +24,12 @@ dependencies {
     compile 'org.spongepowered:spongeapi:7.1.0-SNAPSHOT'
 }
 
-//Fix forges AT breaking everything because the AT checker is stupid
-[tasks.deobfMcMCP, tasks.deobfMcSRG].each { it.failOnAtError = false }
-
 processResources {
     inputs.property "version", project.version
-    inputs.property "mcversion", project.minecraft.version
 
     from(sourceSets.main.resources.srcDirs) {
         include 'mcmod.info'
-        expand 'version':project.version, 'mcversion':project.minecraft.version
+        expand 'version':project.version
     }
     from(sourceSets.main.resources.srcDirs) {
         exclude 'mcmod.info'

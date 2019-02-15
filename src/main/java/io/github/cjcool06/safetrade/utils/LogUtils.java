@@ -1,8 +1,6 @@
 package io.github.cjcool06.safetrade.utils;
 
-import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
 import io.github.cjcool06.safetrade.SafeTrade;
-import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.managers.DataManager;
 import io.github.cjcool06.safetrade.obj.Log;
 import io.github.cjcool06.safetrade.obj.Side;
@@ -109,45 +107,6 @@ public class LogUtils {
                 .color(TextColors.DARK_AQUA)
                 .append(Text.builder().append(Text.of(TextColors.AQUA, side1.vault.account.getBalance(currency).intValue())).build())
                 .build();
-
-        builder1.append(Text.of("\n" + "Pokemon:"))
-                .color(TextColors.DARK_AQUA)
-                .build();
-        builder2.append(Text.of("\n" + "Pokemon:"))
-                .color(TextColors.DARK_AQUA)
-                .build();
-        for (Pokemon pixelmon : side0.vault.getAllPokemon()) {
-            Text.Builder pokemonInfo = Text.builder();
-            int count = 0;
-            for (Text text1 : Utils.getPokemonLore(pixelmon)) {
-                count++;
-                pokemonInfo.append(text1);
-                if (count != Utils.getPokemonLore(pixelmon).size()) {
-                    pokemonInfo.append(Text.of("\n"));
-                }
-            }
-            builder1.append(Text.builder()
-                    .append(Text.of(TextColors.AQUA, "\n" + pixelmon.getSpecies().getLocalizedName() + (pixelmon.isEgg() && !Config.showEggStats ? " Egg" : "")))
-                    .onHover(TextActions.showText(pokemonInfo.build()))
-                    .build())
-                    .build();
-        }
-        for (Pokemon pixelmon : side1.vault.getAllPokemon()) {
-            Text.Builder pokemonInfo = Text.builder();
-            int count = 0;
-            for (Text text1 : Utils.getPokemonLore(pixelmon)) {
-                count++;
-                pokemonInfo.append(text1);
-                if (count != Utils.getPokemonLore(pixelmon).size()) {
-                    pokemonInfo.append(Text.of("\n"));
-                }
-            }
-            builder2.append(Text.builder()
-                    .append(Text.of(TextColors.AQUA, "\n" + pixelmon.getSpecies().getLocalizedName() + (pixelmon.isEgg() && !Config.showEggStats ? " Egg" : "")))
-                    .onHover(TextActions.showText(pokemonInfo.build()))
-                    .build())
-                    .build();
-        }
 
         // TODO: Show items stats: durability
         builder1.append(Text.of("\n" + "Items:"))

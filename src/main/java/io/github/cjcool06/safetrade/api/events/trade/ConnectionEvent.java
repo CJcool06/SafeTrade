@@ -1,16 +1,26 @@
 package io.github.cjcool06.safetrade.api.events.trade;
 
 import io.github.cjcool06.safetrade.obj.Side;
-import net.minecraftforge.fml.common.eventhandler.Cancelable;
-import net.minecraftforge.fml.common.eventhandler.Event;
+import org.spongepowered.api.Sponge;
+import org.spongepowered.api.event.Cancellable;
+import org.spongepowered.api.event.cause.Cause;
+import org.spongepowered.api.event.impl.AbstractEvent;
 
-public class ConnectionEvent extends Event {
+public class ConnectionEvent extends AbstractEvent {
 
     public final Side side;
+    private final Cause cause;
 
     private ConnectionEvent(Side side) {
         this.side = side;
+        this.cause = Sponge.getCauseStackManager().getCurrentCause();
     }
+
+    @Override
+    public Cause getCause() {
+        return cause;
+    }
+
 
     public static class Join extends ConnectionEvent {
 
@@ -21,10 +31,21 @@ public class ConnectionEvent extends Event {
         /**
          * Posted before the {@link Side} connects to the trade inventory.
          */
-        @Cancelable
-        public static class Pre extends Join {
+        public static class Pre extends Join implements Cancellable {
+            private boolean cancelled = false;
+
             public Pre(Side side) {
                 super(side);
+            }
+
+            @Override
+            public boolean isCancelled() {
+                return cancelled;
+            }
+
+            @Override
+            public void setCancelled(boolean cancel) {
+                cancelled = cancel;
             }
         }
 
