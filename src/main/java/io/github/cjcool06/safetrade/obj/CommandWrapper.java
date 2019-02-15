@@ -19,10 +19,18 @@ public class CommandWrapper {
         this.commandType = commandType;
     }
 
+    /**
+     * Execute the command as {@link org.spongepowered.api.command.source.ConsoleSource}.
+     */
     public void consoleExecute() {
         Sponge.getCommandManager().process(Sponge.getServer().getConsole(), cmd);
     }
 
+    /**
+     * Execute the command as the {@link Player}.
+     *
+     * @param player The player
+     */
     public void sudoExecute(Player player) {
         Sponge.getCommandManager().process(player, cmd);
     }
