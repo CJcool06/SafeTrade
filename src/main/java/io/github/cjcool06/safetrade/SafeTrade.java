@@ -5,7 +5,7 @@ import io.github.cjcool06.safetrade.commands.TradeCommand;
 import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.listeners.ConnectionListener;
 import io.github.cjcool06.safetrade.listeners.TradeCreationListener;
-import io.github.cjcool06.safetrade.listeners.TradeExecutedEvent;
+import io.github.cjcool06.safetrade.listeners.TradeExecutedListener;
 import io.github.cjcool06.safetrade.listeners.ViewerConnectionListener;
 import io.github.cjcool06.safetrade.managers.DataManager;
 import io.github.cjcool06.safetrade.obj.Trade;
@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 public class SafeTrade {
     public static final String ID = "safetrade";
     public static final String NAME = "SafeTrade";
-    public static final String VERSION = "2.0.1-SPONGE";
+    public static final String VERSION = "2.0.1";
     public static final String DESCRIPTION = "Trade Pokemon, Items, and Money safely";
     public static final String AUTHORS = "CJcool06";
     private static SafeTrade plugin;
@@ -65,7 +65,7 @@ public class SafeTrade {
         Sponge.getEventManager().registerListeners(this, new ConnectionListener());
         Sponge.getEventManager().registerListeners(this, new ViewerConnectionListener());
         Sponge.getEventManager().registerListeners(this, new TradeCreationListener());
-        Sponge.getEventManager().registerListeners(this, new TradeExecutedEvent());
+        Sponge.getEventManager().registerListeners(this, new TradeExecutedListener());
 
         Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade");
 
