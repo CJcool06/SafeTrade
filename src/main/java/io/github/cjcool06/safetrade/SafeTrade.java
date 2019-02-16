@@ -5,6 +5,7 @@ import io.github.cjcool06.safetrade.commands.TradeCommand;
 import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.listeners.ConnectionListener;
 import io.github.cjcool06.safetrade.listeners.TradeCreationListener;
+import io.github.cjcool06.safetrade.listeners.TradeExecutedEvent;
 import io.github.cjcool06.safetrade.listeners.ViewerConnectionListener;
 import io.github.cjcool06.safetrade.managers.DataManager;
 import io.github.cjcool06.safetrade.obj.Trade;
@@ -64,6 +65,7 @@ public class SafeTrade {
         Sponge.getEventManager().registerListeners(this, new ConnectionListener());
         Sponge.getEventManager().registerListeners(this, new ViewerConnectionListener());
         Sponge.getEventManager().registerListeners(this, new TradeCreationListener());
+        Sponge.getEventManager().registerListeners(this, new TradeExecutedEvent());
 
         Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade");
 
