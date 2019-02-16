@@ -99,7 +99,7 @@ public class Vault {
         getAllPokemon().forEach(storage::addPokemon);
 
         Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
-        account.transfer(SafeTrade.getEcoService().getOrCreateAccount(storage.playerUUID).get(), currency, account.getBalance(currency), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
+        SafeTrade.getEcoService().getOrCreateAccount(storage.playerUUID).get().deposit(currency, account.getBalance(currency), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
     }
 
     /**

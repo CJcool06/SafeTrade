@@ -10,20 +10,24 @@ import com.pixelmonmod.pixelmon.config.PixelmonItems;
 import com.pixelmonmod.pixelmon.entities.pixelmon.EntityPixelmon;
 import com.pixelmonmod.pixelmon.items.ItemPixelmonSprite;
 import com.pixelmonmod.pixelmon.storage.PlayerPartyStorage;
+import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.obj.Side;
+import io.github.cjcool06.safetrade.obj.Trade;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import org.spongepowered.api.Sponge;
+import org.spongepowered.api.data.key.Keys;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
 import org.spongepowered.api.item.inventory.ItemStack;
+import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 import org.spongepowered.api.service.user.UserStorageService;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.action.TextActions;
 import org.spongepowered.api.text.format.TextColors;
+import org.spongepowered.api.text.format.TextStyles;
 
-import javax.annotation.Nullable;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -33,11 +37,6 @@ import java.util.*;
 public class Utils {
     public static Optional<User> getUser(UUID uuid) {
         return Sponge.getServiceManager().provide(UserStorageService.class).get().get(uuid);
-    }
-
-    @Nullable
-    public static Pokemon getPokemonInSlot(Player player, int slot) {
-        return Pixelmon.storageManager.getParty((EntityPlayerMP)player).get(slot);
     }
 
     public static ItemStack getPicture(Pokemon pokemon) {
@@ -51,18 +50,18 @@ public class Utils {
 
         return (ItemStack)(Object)ItemPixelmonSprite.getPhoto(pokemon);
     }
-/*
-    public static Text[] getTradeOverviewLore(DeprecatedTrade trade) {
+
+    public static Text[] getTradeOverviewLore(Trade trade) {
         Text.Builder builder1 =  Text.builder();
         Text.Builder builder2 = Text.builder();
 
         builder1.append(Text.of("Money:"))
                 .color(TextColors.DARK_AQUA)
-                .append(Text.builder().append(Text.of(TextColors.AQUA, " ", trade.money.get(trade.participants[0]))).build())
+                .append(Text.builder().append(Text.of(TextColors.AQUA, " ", trade.getSides()[0].vault.account.getBalance(SafeTrade.getEcoService().getDefaultCurrency()).intValue())).build())
                 .build();
         builder2.append(Text.of("Money:"))
                 .color(TextColors.DARK_AQUA)
-                .append(Text.builder().append(Text.of(TextColors.AQUA, " ", trade.money.get(trade.participants[1]))).build())
+                .append(Text.builder().append(Text.of(TextColors.AQUA, " ", trade.getSides()[1].vault.account.getBalance(SafeTrade.getEcoService().getDefaultCurrency()).intValue())).build())
                 .build();
 
         builder1.append(Text.of("\n" + "Pokemon:"))
@@ -71,11 +70,21 @@ public class Utils {
         builder2.append(Text.of("\n" + "Pokemon:"))
                 .color(TextColors.DARK_AQUA)
                 .build();
-        for (EntityPixelmon pixelmon : trade.listedPokemon.get(trade.participants[0]).values()) {
-            builder1.append(Text.builder().append(Text.of(TextColors.AQUA, "\n" + pixelmon.getName() + (pixelmon.isEgg && !Config.showEggStats ? " Egg" : ""))).build()).build();
+        for (Pokemon pokemon : trade.getSides()[0].vault.getAllPokemon()) {
+            if (pokemon.isEgg()) {
+                builder1.append(Text.builder().append(Text.of(TextColors.AQUA, "\n" + (Config.showEggName ? pokemon.getSpecies().getLocalizedName() + " Egg" : "Egg"))).build()).build();
+            }
+            else {
+                builder1.append(Text.builder().append(Text.of(TextColors.AQUA, "\n" + pokemon.getSpecies().getLocalizedName())).build()).build();
+            }
         }
-        for (EntityPixelmon pixelmon : trade.listedPokemon.get(trade.participants[1]).values()) {
-            builder2.append(Text.builder().append(Text.of(TextColors.AQUA, "\n" + pixelmon.getName() + (pixelmon.isEgg && !Config.showEggStats ? " Egg" : ""))).build()).build();
+        for (Pokemon pokemon : trade.getSides()[1].vault.getAllPokemon()) {
+            if (pokemon.isEgg()) {
+                builder2.append(Text.builder().append(Text.of(TextColors.AQUA, "\n" + (Config.showEggName ? pokemon.getSpecies().getLocalizedName() + " Egg" : "Egg"))).build()).build();
+            }
+            else {
+                builder2.append(Text.builder().append(Text.of(TextColors.AQUA, "\n" + pokemon.getSpecies().getLocalizedName())).build()).build();
+            }
         }
 
         builder1.append(Text.of("\n" + "Items:"))
@@ -84,14 +93,14 @@ public class Utils {
         builder2.append(Text.of("\n" + "Items:"))
                 .color(TextColors.DARK_AQUA)
                 .build();
-        for (ItemStackSnapshot snapshot : trade.getItems(trade.participants[0])) {
+        for (ItemStackSnapshot snapshot : trade.getSides()[0].vault.getAllItems()) {
             builder1.append(Text.builder().append(Text.of("\n", TextColors.GREEN, snapshot.getQuantity() + "x ", TextColors.AQUA, snapshot.getTranslation().get()))
                     .build()).build();
             if (snapshot.get(Keys.DISPLAY_NAME).isPresent()) {
                 builder1.append(Text.builder().append(Text.of("  ", TextColors.GOLD, "[", snapshot.get(Keys.DISPLAY_NAME).get(), TextColors.GOLD, "]")).build()).build();
             }
         }
-        for (ItemStackSnapshot snapshot : trade.getItems(trade.participants[1])) {
+        for (ItemStackSnapshot snapshot : trade.getSides()[1].vault.getAllItems()) {
             builder2.append(Text.builder().append(Text.of("\n", TextColors.GREEN, snapshot.getQuantity() + "x ", TextColors.AQUA, snapshot.getTranslation().get()))
                     .build()).build();
             if (snapshot.get(Keys.DISPLAY_NAME).isPresent()) {
@@ -102,22 +111,22 @@ public class Utils {
         return new Text[]{builder1.build(), builder2.build()};
     }
 
-    public static Text getSuccessMessage(DeprecatedTrade trade) {
+    public static Text getSuccessMessage(Trade trade) {
         Text[] texts = getTradeOverviewLore(trade);
 
         return Text.builder("SafeTrade Overview >> ")
                 .color(TextColors.GREEN)
                 .style(TextStyles.BOLD)
-                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, trade.participants[0].getName()))
+                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, trade.getSides()[0].getUser().get().getName()))
                         .onHover(TextActions.showText(texts[0]))
                         .build())
                 .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, " & "))
                         .build())
-                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, trade.participants[1].getName()))
+                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, trade.getSides()[1].getUser().get().getName()))
                         .onHover(TextActions.showText(texts[1]))
                         .build())
                 .build();
-    }*/
+    }
 
     public static ArrayList<Text> getPokemonLore(Pokemon pokemon) {
         ArrayList<Text> lore = new ArrayList<>();
@@ -146,6 +155,7 @@ public class Utils {
             heldItem += "None";
         }
         String breedable = new PokemonSpec("unbreedable").matches(pokemon) ? "No" : "Yes";
+        String tradeable = new PokemonSpec("untradeable").matches(pokemon) ? "No" : "Yes";
         // EVs
         int hpEV = pokemon.getStats().evs.hp;
         int attackEV = pokemon.getStats().evs.attack;
@@ -177,6 +187,7 @@ public class Utils {
         lore.add(Text.of(TextColors.DARK_AQUA, "OT: ", TextColors.AQUA, originalTrainer));
         lore.add(Text.of(TextColors.DARK_AQUA, "Held Item: ", TextColors.AQUA, heldItem));
         lore.add(Text.of(TextColors.DARK_AQUA, "Breedable: ", TextColors.AQUA, breedable));
+        lore.add(Text.of(TextColors.DARK_AQUA, "Tradeable: ", TextColors.AQUA, tradeable));
         lore.add(Text.of());
         lore.add(Text.of(TextColors.DARK_AQUA, "IVs: ", TextColors.GRAY, "(", TextColors.RED, totalIVs, TextColors.GRAY, ")"));
         lore.add(Text.of(TextColors.AQUA, "Att: ", TextColors.GREEN, attackIV, TextColors.DARK_GRAY, " | ", TextColors.AQUA, "Sp.Att: ", TextColors.GREEN, spAttkIV));
@@ -205,10 +216,6 @@ public class Utils {
             return true;
         }
         return false;
-    }
-
-    public static Text createHoverText(Text baseText, Text hoverText) {
-        return Text.builder().append(baseText).onHover(TextActions.showText(hoverText)).build();
     }
 
     public static LocalDateTime convertToUTC(LocalDateTime localDateTime) {
