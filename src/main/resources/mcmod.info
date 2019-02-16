@@ -13,6 +13,8 @@
     "credits": "",
     "logoFile": "",
     "screenshots": [],
-    "dependencies": []
+    "dependencies": [
+      "spongeapi@7.1.0-SNAPSHOT"
+    ]
   }
 ]
