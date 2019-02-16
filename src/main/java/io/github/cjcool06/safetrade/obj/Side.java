@@ -161,7 +161,7 @@ public class Side {
                     ready = false;
                     paused = true;
                     currentInventory = InventoryType.NONE;
-                    Sponge.getScheduler().createTaskBuilder().execute(player::closeInventory).delayTicks(1).submit(SafeTrade.getPlugin());
+                    player.closeInventory();
                     break;
             }
         }
