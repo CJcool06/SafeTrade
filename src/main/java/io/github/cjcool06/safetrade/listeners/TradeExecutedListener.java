@@ -4,7 +4,7 @@ import io.github.cjcool06.safetrade.api.events.trade.TradeEvent;
 import io.github.cjcool06.safetrade.utils.Utils;
 import org.spongepowered.api.event.Listener;
 
-public class TradeExecutedEvent {
+public class TradeExecutedListener {
 
     @Listener
     public void onExecuted(TradeEvent.Executed.SuccessfulTrade event) {
