@@ -303,13 +303,17 @@ public class InventoryHelper {
                                     if (result.getResult() == ResultType.SUCCESS) {
                                         side.sendMessage(Text.of(TextColors.GREEN, "Successfully added " + NumberFormat.getNumberInstance(Locale.US).format(i) + " ", currency.getPluralDisplayName(), " to the trade."));
 
-                                        // Refreshes the total money item
+                                        // Refreshes the total money and player money item
                                         event.getTargetInventory().slots().forEach(s -> {
                                             int index = s.getProperty(SlotIndex.class, "slotindex").get().getValue();
                                             if (index == 22) {
                                                 s.set(ItemUtils.Money.getTotalMoney(side));
                                             }
+                                            else if (index == 26) {
+                                                s.set(ItemUtils.Money.getPlayersMoney(side));
+                                            }
                                         });
+                                        side.parentTrade.reformatInventory();
                                     } else {
                                         side.sendMessage(Text.of(TextColors.RED, "You do not have enough money."));
                                     }
@@ -320,26 +324,34 @@ public class InventoryHelper {
                                         int val = side.vault.account.getBalance(currency).intValue();
                                         side.vault.account.transfer(SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get(), currency, side.vault.account.getBalance(currency), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
                                         side.sendMessage(Text.of(TextColors.GREEN, "Successfully removed " + NumberFormat.getNumberInstance(Locale.US).format(val) + " ", currency.getPluralDisplayName(), " from the trade."));
-                                        // Refreshes the total money item
+                                        // Refreshes the total money and player money item
                                         event.getTargetInventory().slots().forEach(s -> {
                                             int index = s.getProperty(SlotIndex.class, "slotindex").get().getValue();
                                             if (index == 22) {
                                                 s.set(ItemUtils.Money.getTotalMoney(side));
                                             }
+                                            else if (index == 26) {
+                                                s.set(ItemUtils.Money.getPlayersMoney(side));
+                                            }
                                         });
+                                        side.parentTrade.reformatInventory();
                                     }
                                     else {
                                         TransactionResult result = side.vault.account.transfer(SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get(), currency, BigDecimal.valueOf(i), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
 
                                         if (result.getResult() == ResultType.SUCCESS) {
                                             side.sendMessage(Text.of(TextColors.GREEN, "Successfully removed " + NumberFormat.getNumberInstance(Locale.US).format(i) + " ", currency.getPluralDisplayName(), " from the trade."));
-                                            // Refreshes the total money item
+                                            // Refreshes the total money and player money item
                                             event.getTargetInventory().slots().forEach(s -> {
                                                 int index = s.getProperty(SlotIndex.class, "slotindex").get().getValue();
                                                 if (index == 22) {
                                                     s.set(ItemUtils.Money.getTotalMoney(side));
                                                 }
+                                                else if (index == 26) {
+                                                    s.set(ItemUtils.Money.getPlayersMoney(side));
+                                                }
                                             });
+                                            side.parentTrade.reformatInventory();
                                         } else {
                                             side.sendMessage(Text.of(TextColors.RED, "There was an error removing " + NumberFormat.getNumberInstance(Locale.US).format(i) + " ", currency.getPluralDisplayName(), " from the trade."));
                                             side.sendMessage(Text.of(TextColors.RED, "Contact an administrator if this continues."));
