@@ -476,8 +476,9 @@ public class Trade {
             else if (i == 49) {
                 slot.set(ItemUtils.Main.getPause());
             }
+
             // Filler
-            else if (i == 10 || i == 12 || i == 14 || i == 16 || i == 19 || i == 21 || i == 23 || i == 25 || i == 29 || i == 33 || (i >= 37 && i <= 39) || (i >= 41 && i <= 43)) {
+            else if (i <= 53) {
                 slot.set(ItemUtils.Other.getFiller(DyeColors.BLACK));
             }
         });

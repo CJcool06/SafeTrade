@@ -580,6 +580,10 @@ public class InventoryHelper {
             else if (i == 8) {
                 slot.set(ItemUtils.Logs.getMoney(log.getOtherParticipant(), log.getOtherSidesMoney()));
             }
+
+            else if (i <= 8) {
+                slot.set(ItemUtils.Other.getFiller(DyeColors.LIGHT_BLUE));
+            }
         });
     }
 
