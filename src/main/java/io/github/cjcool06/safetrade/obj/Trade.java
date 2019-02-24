@@ -4,6 +4,7 @@ import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.InventoryType;
 import io.github.cjcool06.safetrade.api.enums.TradeResult;
 import io.github.cjcool06.safetrade.api.enums.TradeState;
+import io.github.cjcool06.safetrade.api.events.trade.ConnectionEvent;
 import io.github.cjcool06.safetrade.api.events.trade.StateChangedEvent;
 import io.github.cjcool06.safetrade.api.events.trade.TradeCreationEvent;
 import io.github.cjcool06.safetrade.api.events.trade.TradeEvent;
@@ -184,8 +185,9 @@ public class Trade {
             storage1.giveItems();
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
-
         Sponge.getEventManager().post(new TradeEvent.Executed.SuccessfulTrade(this, TradeResult.SUCCESS));
+        setState(TradeState.ENDED);
+
         return TradeResult.SUCCESS;
     }
 
@@ -211,8 +213,9 @@ public class Trade {
                 player.setMessageChannel(MessageChannel.TO_ALL);
             });
         }).delayTicks(1).submit(SafeTrade.getPlugin());
-
         Sponge.getEventManager().post(new TradeEvent.Cancelled(this));
+        setState(TradeState.ENDED);
+
         return TradeResult.CANCELLED;
     }
 
@@ -253,8 +256,6 @@ public class Trade {
      * @param closeInventory Whether to close the player's inventory
      */
     public void removeViewer(Player player, boolean closeInventory) {
-        // Delaying by 1 tick prevents nasty errors if the method is called when listening to InteractInventoryEvent#Close,
-        // as it would be attempting to close the inventory... while closing the inventory. lol
         viewers.removeIf(p -> p.getUniqueId().equals(player.getUniqueId()));
         if (closeInventory) {
             Sponge.getScheduler().createTaskBuilder().execute(player::closeInventory).delayTicks(1).submit(SafeTrade.getPlugin());
@@ -329,7 +330,11 @@ public class Trade {
                         Sponge.getScheduler().createTaskBuilder().execute(this::reformatInventory).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Main.getPause()) && state == TradeState.TRADING) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventory(InventoryType.NONE)).delayTicks(1).submit(SafeTrade.getPlugin());
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> {
+                            side.changeInventory(InventoryType.NONE);
+                            reformatInventory();
+                            Sponge.getEventManager().post(new ConnectionEvent.Left(side));
+                        }).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Main.getQuit()) && state == TradeState.TRADING) {
                         Sponge.getScheduler().createTaskBuilder().execute(this::forceEnd).delayTicks(1).submit(SafeTrade.getPlugin());

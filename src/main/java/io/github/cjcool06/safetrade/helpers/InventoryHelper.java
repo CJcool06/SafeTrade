@@ -6,12 +6,17 @@ import io.github.cjcool06.safetrade.api.enums.TradeState;
 import io.github.cjcool06.safetrade.api.events.trade.ConnectionEvent;
 import io.github.cjcool06.safetrade.api.events.trade.InventoryChangeEvent;
 import io.github.cjcool06.safetrade.api.events.trade.ViewerEvent;
+import io.github.cjcool06.safetrade.obj.Log;
+import io.github.cjcool06.safetrade.obj.PlayerStorage;
 import io.github.cjcool06.safetrade.obj.Side;
 import io.github.cjcool06.safetrade.obj.Trade;
+import io.github.cjcool06.safetrade.trackers.Tracker;
 import io.github.cjcool06.safetrade.utils.ItemUtils;
 import org.spongepowered.api.Sponge;
+import org.spongepowered.api.data.key.Keys;
 import org.spongepowered.api.data.type.DyeColors;
 import org.spongepowered.api.entity.living.player.Player;
+import org.spongepowered.api.entity.living.player.User;
 import org.spongepowered.api.event.cause.Cause;
 import org.spongepowered.api.event.cause.EventContext;
 import org.spongepowered.api.event.item.inventory.ClickInventoryEvent;
@@ -19,6 +24,7 @@ import org.spongepowered.api.event.item.inventory.InteractInventoryEvent;
 import org.spongepowered.api.item.inventory.Inventory;
 import org.spongepowered.api.item.inventory.InventoryArchetypes;
 import org.spongepowered.api.item.inventory.ItemStack;
+import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 import org.spongepowered.api.item.inventory.property.InventoryDimension;
 import org.spongepowered.api.item.inventory.property.InventoryTitle;
 import org.spongepowered.api.item.inventory.property.SlotIndex;
@@ -30,9 +36,7 @@ import org.spongepowered.api.text.format.TextColors;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * This class is to simply prevent these methods from unnecessarily cluttering up other classes
@@ -361,6 +365,160 @@ public class InventoryHelper {
 
                                 break;
                             }
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /** Logs shit */
+
+    public static Inventory buildAndGetLogInventory(Log log) {
+        User user = log.getParticipant();
+        User otherUser = log.getOtherParticipant();
+
+        Inventory inventory = Inventory.builder()
+                .property(InventoryTitle.PROPERTY_NAME, InventoryTitle.of(Text.of(TextColors.DARK_AQUA, user.getName() + " & " + otherUser.getName() + "'s Trade Log")))
+                .property(InventoryDimension.PROPERTY_NAME, new InventoryDimension(9,1))
+                .of(InventoryArchetypes.MENU_GRID)
+                .listener(ClickInventoryEvent.class, event -> handleLogClick(log, event))
+                .build(SafeTrade.getPlugin());
+
+        updateLogInventory(inventory, log);
+
+        return inventory;
+    }
+
+    private static void updateLogInventory(Inventory inventory, Log log) {
+        inventory.slots().forEach(slot -> {
+            int i = slot.getProperty(SlotIndex.class, "slotindex").get().getValue();
+
+            // First participant
+            if (i == 1) {
+                slot.set(ItemUtils.Logs.getMoney(log.getParticipant(), log.getSidesMoney()));
+            }
+            else if (i == 2) {
+                slot.set(ItemUtils.Logs.getItems(log.getParticipant()));
+            }
+            else if (i == 3) {
+                slot.set(ItemUtils.Logs.getHead(log.getParticipant()));
+            }
+
+            // Other participant
+            else if (i == 5) {
+                slot.set(ItemUtils.Logs.getHead(log.getOtherParticipant()));
+            }
+            else if (i == 6) {
+                slot.set(ItemUtils.Logs.getItems(log.getOtherParticipant()));
+            }
+            else if (i == 7) {
+                slot.set(ItemUtils.Logs.getMoney(log.getOtherParticipant(), log.getOtherSidesMoney()));
+            }
+            else if (i <= 8) {
+                slot.set(ItemUtils.Other.getFiller(DyeColors.LIGHT_BLUE));
+            }
+        });
+    }
+
+    private static void handleLogClick(Log log, ClickInventoryEvent event) {
+        event.setCancelled(true);
+        event.getCause().first(Player.class).ifPresent(player -> {
+            event.getTransactions().forEach(transaction -> {
+                transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
+                    ItemStack item = transaction.getOriginal().createStack();
+
+                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+                    else if (item.equalTo(ItemUtils.Logs.getItems(log.getParticipant()))) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getLogItemsInventory(log, log.getParticipant(), log.getSidesItems())))
+                                .delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+                    else if (item.equalTo(ItemUtils.Logs.getItems(log.getOtherParticipant()))) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getLogItemsInventory(log, log.getOtherParticipant(), log.getOtherSidesItems())))
+                                .delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+                });
+            });
+        });
+    }
+
+    private static Inventory getLogItemsInventory(Log log, User user, List<ItemStackSnapshot> items) {
+        List<ItemStack> itemStacks = new ArrayList<>();
+        items.forEach(item -> itemStacks.add(item.createStack()));
+        itemStacks.forEach(item -> {
+            List<Text> existingLore = item.get(Keys.ITEM_LORE).isPresent() ? item.get(Keys.ITEM_LORE).get() : new ArrayList<>();
+            if (existingLore.size() != 0) {
+                existingLore.add(Text.of());
+            }
+            existingLore.add(Text.of(TextColors.GREEN, "Left-click to put this item in your inventory or storage"));
+            existingLore.add(Text.of(TextColors.GOLD, "Right-click to put this item in the user's inventory or storage"));
+            item.offer(Keys.ITEM_LORE, existingLore);
+        });
+
+        Inventory inventory = Inventory.builder()
+                .property(InventoryTitle.PROPERTY_NAME, InventoryTitle.of(Text.of(TextColors.DARK_AQUA, user.getName() + "'s Traded Items")))
+                .property(InventoryDimension.PROPERTY_NAME, new InventoryDimension(9,6))
+                .of(InventoryArchetypes.MENU_GRID)
+                .listener(ClickInventoryEvent.class, event -> handleLogItemsClick(log, user, items, itemStacks, event))
+                .build(SafeTrade.getPlugin());
+
+        Iterator<ItemStack> iter = itemStacks.iterator();
+
+        inventory.slots().forEach(slot -> {
+            int i = slot.getProperty(SlotIndex.class, "slotindex").get().getValue();
+
+            if (i <= 35) {
+                if (iter.hasNext()) {
+                    slot.set(iter.next());
+                }
+            }
+            else if (i == 45) {
+                slot.set(ItemUtils.Other.getBackButton());
+            }
+            else if (i <= 53) {
+                slot.set(ItemUtils.Other.getFiller(DyeColors.GRAY));
+            }
+        });
+
+        return inventory;
+    }
+
+    private static void handleLogItemsClick(Log log, User user, List<ItemStackSnapshot> actualItems, List<ItemStack> items, ClickInventoryEvent event) {
+        event.setCancelled(true);
+        event.getCause().first(Player.class).ifPresent(player -> {
+            event.getTransactions().forEach(transaction -> {
+                transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
+                    ItemStack item = transaction.getOriginal().createStack();
+                    PlayerStorage storage;
+
+                    if (event instanceof ClickInventoryEvent.Primary) {
+                        storage = Tracker.getOrCreateStorage(player);
+                    }
+                    else if (event instanceof ClickInventoryEvent.Secondary) {
+                        storage = Tracker.getOrCreateStorage(user);
+                    }
+                    else {
+                        return;
+                    }
+
+                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+
+                    for (ItemStack i : items) {
+                        if (item.equalTo(i)) {
+                            ItemStackSnapshot snapshot = actualItems.get(items.indexOf(i));
+                            storage.addItem(snapshot);
+                            List<ItemStackSnapshot> itemsGiven = storage.giveItems();
+                            if (itemsGiven.size() > 0) {
+                                player.sendMessage(Text.of(TextColors.DARK_AQUA, "SafeTrade ", TextColors.GREEN, "has placed ", TextColors.DARK_AQUA, itemsGiven.size(), TextColors.GREEN, " items in to your inventory:"));
+                                for (ItemStackSnapshot givenSnapshot : itemsGiven) {
+                                    storage.getPlayer().get().sendMessage(Text.of(TextColors.GREEN, givenSnapshot.getQuantity() + "x ", TextColors.AQUA, givenSnapshot.getTranslation().get()));
+                                }
+                            }
+                            break;
                         }
                     }
                 });

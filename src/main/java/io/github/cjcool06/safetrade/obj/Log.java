@@ -1,16 +1,23 @@
 package io.github.cjcool06.safetrade.obj;
 
-import io.github.cjcool06.safetrade.utils.LogUtils;
+import io.github.cjcool06.safetrade.SafeTrade;
+import io.github.cjcool06.safetrade.helpers.InventoryHelper;
 import io.github.cjcool06.safetrade.utils.Utils;
 import ninja.leaping.configurate.objectmapping.Setting;
 import ninja.leaping.configurate.objectmapping.serialize.ConfigSerializable;
+import org.spongepowered.api.Sponge;
+import org.spongepowered.api.data.persistence.DataFormats;
+import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
+import org.spongepowered.api.item.inventory.Inventory;
+import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 import org.spongepowered.api.service.pagination.PaginationList;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.action.TextActions;
 import org.spongepowered.api.text.format.TextColors;
 import org.spongepowered.api.text.serializer.TextSerializers;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -29,12 +36,24 @@ public class Log {
     @Setting
     private String timestamp;
     @Setting
-    private UUID participant0;
-    @Setting
-    private UUID participant1;
-    @Setting
+    @Deprecated
     private List<String> jsonTexts;
-    //private Text text;
+
+    // Side
+    @Setting
+    private UUID participant;
+    @Setting
+    private List<String> sideItemStrings;
+    @Setting
+    private Integer sideMoney;
+
+    // Other Side
+    @Setting
+    private UUID otherParticipant;
+    @Setting
+    private List<String> otherSideItemStrings;
+    @Setting
+    private Integer otherSideMoney;
 
     /**
      * Used for deserialisation purposes. Do NOT use this constructor
@@ -43,11 +62,21 @@ public class Log {
     public Log() {}
 
     public Log(Trade trade) {
-        this.uniqueID = UUID.randomUUID();
-        this.timestamp = getFormatter().format(LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime());
-        this.participant0 = trade.getSides()[0].sideOwnerUUID;
-        this.participant1 = trade.getSides()[1].sideOwnerUUID;
-        this.jsonTexts = LogUtils.createContents(trade);
+        uniqueID = UUID.randomUUID();
+        timestamp = getFormatter().format(LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime());
+        //this.jsonTexts = LogUtils.createContents(trade);
+
+        // Side
+        Side side = trade.getSides()[0];
+        participant = side.sideOwnerUUID;
+        sideItemStrings = serialiseItemSnapshots(side.vault.getAllItems());
+        sideMoney = side.vault.account.getBalance(SafeTrade.getEcoService().getDefaultCurrency()).intValue();
+
+        // Other Side
+        Side otherSide = trade.getSides()[1];
+        otherParticipant = otherSide.sideOwnerUUID;
+        otherSideItemStrings = serialiseItemSnapshots(otherSide.vault.getAllItems());
+        otherSideMoney = side.vault.account.getBalance(SafeTrade.getEcoService().getDefaultCurrency()).intValue();
     }
 
     /**
@@ -60,7 +89,7 @@ public class Log {
     }
 
     /**
-     * Gets the timestamp of when the log was created.
+     * Gets the {@link LocalDateTime} of when the log was created.
      *
      * @return The timestamp
      */
@@ -69,21 +98,105 @@ public class Log {
     }
 
     /**
-     * Gets the {@link UUID} of the participants of the trade.
+     * Gets the first participant of the logged trade's {@link UUID}.
      *
-     * @return The participants' uuids
+     * @return The first participant's uuid
      */
-    public UUID[] getParticipantsUUID() {
-        return new UUID[]{participant0, participant1};
+    public UUID getParticipantUUID() {
+        return participant;
     }
 
     /**
-     * Gets the the participants of the trade.
+     * Gets the other participant of the logged trade's {@link UUID}.
      *
-     * @return The participants
+     * @return The other participant's uuid
      */
-    public User[] getParticipants() {
-        return new User[]{Utils.getUser(participant0).isPresent() ? Utils.getUser(participant0).get() : null, Utils.getUser(participant1).isPresent() ? Utils.getUser(participant1).get() : null};
+    public UUID getOtherParticipantUUID() {
+        return otherParticipant;
+    }
+
+    /**
+     * Gets the first participant of the logged trade as a {@link User}.
+     *
+     * @return The first participant
+     */
+    public User getParticipant() {
+        return Utils.getUser(participant).get();
+    }
+
+    /**
+     * Gets the other participant of the logged trade as a {@link User}.
+     *
+     * @return The other participant
+     */
+    public User getOtherParticipant() {
+        return Utils.getUser(otherParticipant).get();
+    }
+
+
+    /**
+     * Gets the first participant's logged {@link ItemStackSnapshot}s.
+     *
+     * @return The items
+     */
+    @SuppressWarnings("all")
+    public List<ItemStackSnapshot> getSidesItems() {
+        List<ItemStackSnapshot> items = new ArrayList<>();
+        for (String itemStr : sideItemStrings) {
+            try {
+                items.add(Sponge.getDataManager().deserialize(ItemStackSnapshot.class, DataFormats.JSON.read(itemStr)).get());
+            } catch (Exception e) {
+                continue;
+            }
+        }
+
+        return items;
+    }
+
+    /**
+     * Gets the first participant's logged {@link ItemStackSnapshot}s.
+     *
+     * @return The items
+     */
+    @SuppressWarnings("all")
+    public List<ItemStackSnapshot> getOtherSidesItems() {
+        List<ItemStackSnapshot> items = new ArrayList<>();
+        for (String itemStr : otherSideItemStrings) {
+            try {
+                items.add(Sponge.getDataManager().deserialize(ItemStackSnapshot.class, DataFormats.JSON.read(itemStr)).get());
+            } catch (Exception e) {
+                continue;
+            }
+        }
+
+        return items;
+    }
+
+    /**
+     * Gets the first participant's logged money.
+     *
+     * @return The money
+     */
+    public Integer getSidesMoney() {
+        return sideMoney;
+    }
+
+    /**
+     * Gets the other participant's logged money.
+     *
+     * @return The money
+     */
+    public Integer getOtherSidesMoney() {
+        return otherSideMoney;
+    }
+
+    /**
+     * Gets the {@link Inventory} of this log.
+     *
+     * @return The inventory
+     */
+    public Inventory getInventory() {
+        return InventoryHelper.buildAndGetLogInventory(this);
     }
 
     /**
@@ -91,6 +204,7 @@ public class Log {
      *
      * @return A list of the texts as strings
      */
+    @Deprecated
     public List<String> getJsonTexts() {
         return new ArrayList<>(jsonTexts);
     }
@@ -100,6 +214,7 @@ public class Log {
      *
      * @return The log text
      */
+    @Deprecated
     public Text getText() {
         Text.Builder builder = Text.builder();
         builder.append(TextSerializers.JSON.deserialize(jsonTexts.get(0)));
@@ -123,8 +238,20 @@ public class Log {
                 }))
                 .build());
 
-
         return builder.build();
+    }
+
+    public Text getDisplayText() {
+        return Text.builder()
+                .append(Text.builder().append(Text.of(TextColors.LIGHT_PURPLE, "[" + Log.getFormatter().format(Utils.convertToUTC(LocalDateTime.now())) + " UTC] "))
+                        .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Day/Month/Year Hour:Minute"))).build())
+                .append(Text.of(TextColors.AQUA, getParticipant().getName(), TextColors.DARK_AQUA, " & ", Text.of(TextColors.AQUA, getOtherParticipant().getName())))
+                .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click here to see this trade's extended log")))
+                .onClick(TextActions.executeCallback(src -> {
+                    Player player = (Player)src;
+                    Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
+                }))
+                .build();
     }
 
     /**
@@ -134,5 +261,19 @@ public class Log {
      */
     public static DateTimeFormatter getFormatter() {
         return DateTimeFormatter.ofPattern("[dd/MM/yyyy HH:mm]");
+    }
+
+    @SuppressWarnings("all")
+    private List<String> serialiseItemSnapshots(List<ItemStackSnapshot> items) {
+        List<String> itemStrings = new ArrayList<>();
+        for (ItemStackSnapshot snapshot : items) {
+            try {
+                itemStrings.add(DataFormats.JSON.write(snapshot.toContainer()));
+            } catch (IOException ioe) {
+                continue;
+            }
+        }
+
+        return itemStrings;
     }
 }

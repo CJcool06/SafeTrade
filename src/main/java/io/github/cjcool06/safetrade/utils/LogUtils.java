@@ -24,14 +24,14 @@ public class LogUtils {
     public static void logTrade(Trade trade) {
         Log log = new Log(trade);
         Sponge.getScheduler().createTaskBuilder().execute(() -> {
-            DataManager.addLog(trade.getSides()[0].getUser().get(), log);
-            DataManager.addLog(trade.getSides()[1].getUser().get(), log);
+            DataManager.addLog(log.getParticipant(), log);
+            DataManager.addLog(log.getOtherParticipant(), log);
         }).async().submit(SafeTrade.getPlugin());
 
     }
 
     /**
-     * This method only loops through one of the participants, as both participants will have the logs of their trades.
+     * This method loops through one of the participants, as both participants will have the logs of their trades.
      * If for some reason one of the users has had their logs removed, you can swap the parameters around.
      *
      * @param participant0 - The first participant of the trade
@@ -42,7 +42,7 @@ public class LogUtils {
         ArrayList<Log> logs = new ArrayList<>();
         ArrayList<Log> logsParticipant0 = DataManager.getLogs(participant0);
         for (Log log : logsParticipant0) {
-            if (log.getParticipantsUUID()[0].equals(participant1.getUniqueId()) || log.getParticipantsUUID()[1].equals(participant1.getUniqueId())) {
+            if (log.getParticipantUUID().equals(participant1.getUniqueId()) || log.getOtherParticipantUUID().equals(participant1.getUniqueId())) {
                 logs.add(log);
             }
         }
@@ -50,6 +50,7 @@ public class LogUtils {
         return logs;
     }
 
+    @Deprecated
     public static List<String> createContents(Trade trade) {
         List<String> contents = new ArrayList<>();
         Text[] extentedLogs = getExtendedLogs(trade);
@@ -87,6 +88,7 @@ public class LogUtils {
      * @param trade - Trade to log
      * @return - Text array corresponding to trade participant indexes. For example, texts[0] is for trade.participants[0]
      */
+    @Deprecated
     private static Text[] getExtendedLogs(Trade trade) {
         Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
 
