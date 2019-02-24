@@ -42,6 +42,7 @@ public class TradeCommand implements CommandExecutor {
                 .child(ViewCommand.getSpec(), "view")
                 //.child(TestCommand.getSpec(), "test")
                 .child(ReloadCommand.getSpec(), "reload")
+                .child(WikiCommand.getSpec(), "wiki")
                 .build();
     }
 
@@ -51,6 +52,7 @@ public class TradeCommand implements CommandExecutor {
 
             contents.add(Text.of(TextColors.AQUA, "/safetrade <player>", TextColors.GRAY, " - ", TextColors.GRAY, "Request a SafeTrade"));
             contents.add(Text.of(TextColors.AQUA, "/safetrade open", TextColors.GRAY, " - ", TextColors.GRAY, "Open your current SafeTrade"));
+            contents.add(Text.of(TextColors.AQUA, "/safetrade wiki", TextColors.GRAY, " - ", TextColors.GRAY, "Gives the wiki link"));
             contents.add(Text.of(TextColors.AQUA, "/safetrade end <player>", TextColors.GRAY, " - ", TextColors.GRAY, "Force end a SafeTrade"));
             contents.add(Text.of(TextColors.AQUA, "/safetrade view <player>", TextColors.GRAY, " - ", TextColors.GRAY, "View a player's SafeTrade"));
             contents.add(Text.of(TextColors.AQUA, "/safetrade logs <user> [other user]", TextColors.GRAY, " - ", TextColors.GRAY, "Browse a player's SafeTrade logs"));
@@ -70,10 +72,7 @@ public class TradeCommand implements CommandExecutor {
             Player target = args.<Player>getOne("target").get();
 
             if (player.equals(target)) {
-                player.sendMessage(Text.of(Text.of(TextColors.RED, "Trading with yourself will cause Earth to implode, killing all known life in the universe. Do you still wish to trade with yourself? "),
-                        Text.of(TextActions.executeCallback(dummySrc -> player.sendMessage(Text.of(TextColors.RED, "I... I didn't expect that... I should go buy a safe for my weapons of mass destruction."))), "[Yep]"),
-                        " ",
-                        Text.of(TextActions.executeCallback(dummySrc -> player.sendMessage(Text.of(TextColors.RED, "Congratulations, you picked correctly! Do you know what your prize is? Nothing. Life lesson? Some tasks are not worth doing."))), "[Nah I'm good]")));
+                player.sendMessage(Text.of(Text.of(TextColors.RED, "You can't trade with yourself you banana.")));
             }
             else if (Tracker.getActiveTrade(player) != null) {
                 player.sendMessage(Text.of(TextColors.RED, "You are already a participant in a SafeTrade."));

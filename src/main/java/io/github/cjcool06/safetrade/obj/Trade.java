@@ -6,6 +6,7 @@ import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.InventoryType;
 import io.github.cjcool06.safetrade.api.enums.TradeResult;
 import io.github.cjcool06.safetrade.api.enums.TradeState;
+import io.github.cjcool06.safetrade.api.events.trade.ConnectionEvent;
 import io.github.cjcool06.safetrade.api.events.trade.StateChangedEvent;
 import io.github.cjcool06.safetrade.api.events.trade.TradeCreationEvent;
 import io.github.cjcool06.safetrade.api.events.trade.TradeEvent;
@@ -117,12 +118,8 @@ public class Trade {
      */
     public List<User> getParticipants() {
         List<User> participants = new ArrayList<>();
-        if (sides[0].getUser().isPresent()) {
-            participants.add(sides[0].getUser().get());
-        }
-        if (sides[1].getUser().isPresent()) {
-            participants.add(sides[1].getUser().get());
-        }
+        participants.add(sides[0].getUser().get());
+        participants.add(sides[1].getUser().get());
 
         return participants;
     }
@@ -160,7 +157,7 @@ public class Trade {
         if (SafeTrade.EVENT_BUS.post(new TradeEvent.Executing(this))) {
             return TradeResult.CANCELLED;
         }
-        LogUtils.logTrade(this);
+        LogUtils.logAndSave(this);
         Tracker.removeActiveTrade(this);
         return handleTrade();
     }
@@ -213,6 +210,7 @@ public class Trade {
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
         SafeTrade.EVENT_BUS.post(new TradeEvent.Executed.SuccessfulTrade(this, TradeResult.SUCCESS));
+        setState(TradeState.ENDED);
 
         return TradeResult.SUCCESS;
     }
@@ -243,6 +241,8 @@ public class Trade {
         }).delayTicks(1).submit(SafeTrade.getPlugin());
 
         SafeTrade.EVENT_BUS.post(new TradeEvent.Cancelled(this));
+        setState(TradeState.ENDED);
+
         return TradeResult.CANCELLED;
     }
 
@@ -283,8 +283,6 @@ public class Trade {
      * @param closeInventory Whether to close the player's inventory
      */
     public void removeViewer(Player player, boolean closeInventory) {
-        // Delaying by 1 tick prevents nasty errors if the method is called when listening to InteractInventoryEvent#Close,
-        // as it would be attempting to close the inventory... while closing the inventory. lol
         viewers.removeIf(p -> p.getUniqueId().equals(player.getUniqueId()));
         if (closeInventory) {
             Sponge.getScheduler().createTaskBuilder().execute(player::closeInventory).delayTicks(1).submit(SafeTrade.getPlugin());
@@ -362,6 +360,7 @@ public class Trade {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> {
                             side.changeInventory(InventoryType.NONE);
                             reformatInventory();
+                            SafeTrade.EVENT_BUS.post(new ConnectionEvent.Left(side));
                         }).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Main.getQuit()) && state == TradeState.TRADING) {

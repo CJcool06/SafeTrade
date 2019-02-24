@@ -23,17 +23,16 @@ import java.util.List;
 
 public class LogUtils {
 
-    public static void logTrade(Trade trade) {
+    public static void logAndSave(Trade trade) {
         Log log = new Log(trade);
         Sponge.getScheduler().createTaskBuilder().execute(() -> {
-            DataManager.addLog(trade.getSides()[0].getUser().get(), log);
-            DataManager.addLog(trade.getSides()[1].getUser().get(), log);
+            DataManager.addLog(log.getParticipant(), log);
+            DataManager.addLog(log.getOtherParticipant(), log);
         }).async().submit(SafeTrade.getPlugin());
-
     }
 
     /**
-     * This method only loops through one of the participants, as both participants will have the logs of their trades.
+     * This method loops through one of the participants, as both participants will have the logs of their trades.
      * If for some reason one of the users has had their logs removed, you can swap the parameters around.
      *
      * @param participant0 - The first participant of the trade
@@ -44,7 +43,7 @@ public class LogUtils {
         ArrayList<Log> logs = new ArrayList<>();
         ArrayList<Log> logsParticipant0 = DataManager.getLogs(participant0);
         for (Log log : logsParticipant0) {
-            if (log.getParticipantsUUID()[0].equals(participant1.getUniqueId()) || log.getParticipantsUUID()[1].equals(participant1.getUniqueId())) {
+            if (log.getParticipant().getUniqueId().equals(participant1.getUniqueId()) || log.getOtherParticipant().getUniqueId().equals(participant1.getUniqueId())) {
                 logs.add(log);
             }
         }
@@ -52,6 +51,7 @@ public class LogUtils {
         return logs;
     }
 
+    @Deprecated
     public static List<String> createContents(Trade trade) {
         List<String> contents = new ArrayList<>();
         Text[] extentedLogs = getExtendedLogs(trade);
@@ -89,6 +89,7 @@ public class LogUtils {
      * @param trade - Trade to log
      * @return - Text array corresponding to trade participant indexes. For example, texts[0] is for trade.participants[0]
      */
+    @Deprecated
     private static Text[] getExtendedLogs(Trade trade) {
         Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
 
@@ -119,10 +120,11 @@ public class LogUtils {
         for (Pokemon pixelmon : side0.vault.getAllPokemon()) {
             Text.Builder pokemonInfo = Text.builder();
             int count = 0;
-            for (Text text1 : Utils.getPokemonLore(pixelmon)) {
+            List<Text> loreTexts = Utils.getPokemonLore(pixelmon);
+            for (Text text : loreTexts) {
                 count++;
-                pokemonInfo.append(text1);
-                if (count != Utils.getPokemonLore(pixelmon).size()) {
+                pokemonInfo.append(text);
+                if (count != loreTexts.size()) {
                     pokemonInfo.append(Text.of("\n"));
                 }
             }
@@ -135,10 +137,11 @@ public class LogUtils {
         for (Pokemon pixelmon : side1.vault.getAllPokemon()) {
             Text.Builder pokemonInfo = Text.builder();
             int count = 0;
-            for (Text text1 : Utils.getPokemonLore(pixelmon)) {
+            List<Text> loreTexts = Utils.getPokemonLore(pixelmon);
+            for (Text text : loreTexts) {
                 count++;
-                pokemonInfo.append(text1);
-                if (count != Utils.getPokemonLore(pixelmon).size()) {
+                pokemonInfo.append(text);
+                if (count != loreTexts.size()) {
                     pokemonInfo.append(Text.of("\n"));
                 }
             }

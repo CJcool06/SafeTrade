@@ -13,6 +13,7 @@ import ninja.leaping.configurate.objectmapping.GuiceObjectMapperFactory;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.config.ConfigDir;
+import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.game.GameReloadEvent;
 import org.spongepowered.api.event.game.state.GameInitializationEvent;
@@ -24,6 +25,8 @@ import org.spongepowered.api.plugin.Dependency;
 import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.plugin.PluginContainer;
 import org.spongepowered.api.service.economy.EconomyService;
+import org.spongepowered.api.text.Text;
+import org.spongepowered.api.text.serializer.TextSerializers;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
@@ -38,7 +41,7 @@ import java.util.concurrent.TimeUnit;
 public class SafeTrade {
     public static final String ID = "safetrade";
     public static final String NAME = "SafeTrade";
-    public static final String VERSION = "2.0.1";
+    public static final String VERSION = "2.0.2";
     public static final String DESCRIPTION = "Trade Pokemon, Items, and Money safely";
     public static final String AUTHORS = "CJcool06";
     public static final EventBus EVENT_BUS = new EventBus();
@@ -69,6 +72,7 @@ public class SafeTrade {
         EVENT_BUS.register(new TradeCreationListener());
         EVENT_BUS.register(new ViewerConnectionListener());
         EVENT_BUS.register(new TradeExecutedListener());
+        EVENT_BUS.register(new TradeConnectionListener());
 
         Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade");
 
@@ -143,5 +147,9 @@ public class SafeTrade {
 
     public static GuiceObjectMapperFactory getFactory() {
         return plugin.factory;
+    }
+
+    public static void sendMessage(Player player, Text text) {
+        player.sendMessage(Text.of(TextSerializers.FORMATTING_CODE.deserialize(Config.prefix), text));
     }
 }

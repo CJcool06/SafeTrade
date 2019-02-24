@@ -12,6 +12,7 @@ import org.spongepowered.api.data.manipulator.mutable.SkullData;
 import org.spongepowered.api.data.type.DyeColor;
 import org.spongepowered.api.data.type.DyeColors;
 import org.spongepowered.api.data.type.SkullTypes;
+import org.spongepowered.api.entity.living.player.User;
 import org.spongepowered.api.item.ItemType;
 import org.spongepowered.api.item.ItemTypes;
 import org.spongepowered.api.item.inventory.ItemStack;
@@ -60,8 +61,8 @@ public class ItemUtils {
             skinData.set(Keys.REPRESENTED_PLAYER, GameProfile.of(side.getUser().get().getUniqueId()));
             itemStack.offer(skinData);
             itemStack.offer(Keys.DISPLAY_NAME, Text.of(TextColors.DARK_AQUA, side.getUser().get().getName()));
-            itemStack.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This side of the trade holds the items, money, and Pokemon that " +
-                    side.getUser().get().getName() + " is willing to trade.")));
+            itemStack.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This side of the trade holds the Items, Money, and Pokemon that " +
+                    side.getUser().get().getName() + " is willing to trade")));
             return itemStack;
         }
 
@@ -121,7 +122,7 @@ public class ItemUtils {
             Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
             ItemStack item = ItemStack.of(ItemTypes.GOLD_BLOCK, 1);
             item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, currency.getSymbol(), side.vault.account.getBalance(currency).intValue()));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This money is safely stored until the trade comes to an end.")));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This money is safely stored until the trade comes to an end")));
             return item;
         }
 
@@ -129,7 +130,7 @@ public class ItemUtils {
             Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
             ItemStack item = ItemStack.of(ItemTypes.DIAMOND_ORE, 1);
             item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GREEN, currency.getSymbol(), SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get().getBalance(currency).intValue()));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This is the total number of ", currency.getPluralDisplayName(), " you have.")));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This is the total number of ", currency.getPluralDisplayName(), " you have")));
             return item;
         }
 
@@ -214,7 +215,7 @@ public class ItemUtils {
             item.offer(Keys.DYE_COLOR, DyeColors.GREEN);
             item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GREEN, "Confirm"));
             item.offer(Keys.ITEM_LORE, Lists.newArrayList(
-                    Text.of(TextColors.GOLD, "Confirm you are happy with the trade.")));
+                    Text.of(TextColors.GOLD, "Confirm you are happy with the trade")));
             return item;
         }
 
@@ -222,7 +223,7 @@ public class ItemUtils {
             ItemStack item = ItemStack.of(ItemTypes.DYE, 1);
             item.offer(Keys.DYE_COLOR, DyeColors.YELLOW);
             item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Cancel"));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GREEN, "Go back and renegotiate the trade.")));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GREEN, "Go back and renegotiate the trade")));
             return item;
         }
 
@@ -237,6 +238,45 @@ public class ItemUtils {
                     Text.of(TextColors.GRAY, "The trade will execute once both players have confirmed."),
                     Text.of(TextColors.RED, "There is no reverting this!")));
             return item;
+        }
+    }
+
+    // Yeah yeah, I know this shit is kinda redundant
+    public static class Logs {
+
+        public static ItemStack getMoney(User user, int money) {
+            Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
+            ItemStack item = ItemStack.of(ItemTypes.GOLD_BLOCK, 1);
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, currency.getSymbol(), money));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "The amount of ", currency.getPluralDisplayName(), " " + user.getName() + " traded")));
+            return item;
+        }
+
+        public static ItemStack getItems(User user) {
+            ItemStack item = ItemStack.of(ItemTypes.CHEST, 1);
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Items"));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Click to view the items that " + user.getName() + " traded")));
+            return item;
+        }
+
+        public static ItemStack getPokemon(User user) {
+            ItemStack item = ItemStack.of(ItemTypes.CHEST, 1);
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Pokemon"));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Click to view the Pokemon that " + user.getName() + " traded")));
+            return item;
+        }
+
+        public static ItemStack getHead(User user) {
+            SkullData skullData = Sponge.getDataManager().getManipulatorBuilder(SkullData.class).get().create();
+            skullData.set(Keys.SKULL_TYPE, SkullTypes.PLAYER);
+            ItemStack itemStack = Sponge.getRegistry().createBuilder(ItemStack.Builder.class).itemType(ItemTypes.SKULL).itemData(skullData).build();
+            RepresentedPlayerData skinData = Sponge.getDataManager().getManipulatorBuilder(RepresentedPlayerData.class).get().create();
+            skinData.set(Keys.REPRESENTED_PLAYER, GameProfile.of(user.getUniqueId()));
+            itemStack.offer(skinData);
+            itemStack.offer(Keys.DISPLAY_NAME, Text.of(TextColors.DARK_AQUA, user.getName()));
+            itemStack.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This side of the trade holds the Items, Money, and Pokemon that " +
+                    user.getName() + " traded")));
+            return itemStack;
         }
     }
 

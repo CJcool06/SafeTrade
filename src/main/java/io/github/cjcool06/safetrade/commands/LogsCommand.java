@@ -48,13 +48,26 @@ public class LogsCommand implements CommandExecutor {
             List<Text> contents = new ArrayList<>();
             ArrayList<Log> logs = target2 == null ? DataManager.getLogs(target) : LogUtils.getLogsOf(target, target2);
             for (Log log : logs) {
-                contents.add(Text.builder().append(Text.builder().append(Text.of(TextColors.RED, "[", TextColors.DARK_RED, "-", TextColors.RED, "] "))
-                        .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click to delete log")))
-                        .onClick(TextActions.executeCallback(dummySrc -> {
-                            DataManager.removeLog(target, log);
-                            showLogs(src, target, target2);
-                        })).build())
-                        .append(log.getText()).build());
+                // Legacy logs
+                if (log.getParticipantUUID() == null) {
+                    contents.add(Text.builder().append(Text.builder().append(Text.of(TextColors.RED, "[", TextColors.DARK_RED, "-", TextColors.RED, "] "))
+                            .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click to delete log")))
+                            .onClick(TextActions.executeCallback(dummySrc -> {
+                                DataManager.removeLog(target, log);
+                                showLogs(src, target, target2);
+                            })).build())
+                            .append(log.getText()).build());
+                }
+                // Current logs
+                else {
+                    contents.add(Text.builder().append(Text.builder().append(Text.of(TextColors.RED, "[", TextColors.DARK_RED, "-", TextColors.RED, "] "))
+                            .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click to delete log")))
+                            .onClick(TextActions.executeCallback(dummySrc -> {
+                                DataManager.removeLog(target, log);
+                                showLogs(src, target, target2);
+                            })).build())
+                            .append(log.getDisplayText()).build());
+                }
             }
             List<Text> reverseContents = Lists.reverse(contents);
 
