@@ -186,6 +186,11 @@ public class Trade {
             storage1.giveItems();
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
+        Sponge.getScheduler().createTaskBuilder().execute(() -> {
+            sides[0].getPlayer().ifPresent(Player::closeInventory);
+            sides[1].getPlayer().ifPresent(Player::closeInventory);
+        }).delayTicks(1).submit(SafeTrade.getPlugin());
+
         Sponge.getEventManager().post(new TradeEvent.Executed.SuccessfulTrade(this, TradeResult.SUCCESS));
         setState(TradeState.ENDED);
 
@@ -198,22 +203,23 @@ public class Trade {
     public TradeResult forceEnd() {
         unloadToStorages();
         tradeChannel.clearMembers();
-
         Tracker.removeActiveTrade(this);
+
+        sides[0].getPlayer().ifPresent(player -> {
+            PlayerStorage storage = Tracker.getOrCreateStorage(player);
+            storage.giveItems();
+            player.setMessageChannel(MessageChannel.TO_ALL);
+        });
+        sides[1].getPlayer().ifPresent(player -> {
+            PlayerStorage storage = Tracker.getOrCreateStorage(player);
+            storage.giveItems();
+            player.setMessageChannel(MessageChannel.TO_ALL);
+        });
         Sponge.getScheduler().createTaskBuilder().execute(() -> {
-            sides[0].getPlayer().ifPresent(player -> {
-                player.closeInventory();
-                PlayerStorage storage = Tracker.getOrCreateStorage(player);
-                storage.giveItems();
-                player.setMessageChannel(MessageChannel.TO_ALL);
-            });
-            sides[1].getPlayer().ifPresent(player -> {
-                player.closeInventory();
-                PlayerStorage storage = Tracker.getOrCreateStorage(player);
-                storage.giveItems();
-                player.setMessageChannel(MessageChannel.TO_ALL);
-            });
+            sides[0].getPlayer().ifPresent(Player::closeInventory);
+            sides[1].getPlayer().ifPresent(Player::closeInventory);
         }).delayTicks(1).submit(SafeTrade.getPlugin());
+
         Sponge.getEventManager().post(new TradeEvent.Cancelled(this));
         setState(TradeState.ENDED);
 
