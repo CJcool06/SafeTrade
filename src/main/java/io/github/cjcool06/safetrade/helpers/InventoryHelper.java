@@ -233,10 +233,6 @@ public class InventoryHelper {
 
                             if (otherSide.isConfirmed()) {
                                 trade.executeTrade();
-                                Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                                    side.getPlayer().ifPresent(Player::closeInventory);
-                                    otherSide.getPlayer().ifPresent(Player::closeInventory);
-                                }).delayTicks(1).submit(SafeTrade.getPlugin());
                             }
                             else {
                                 Sponge.getScheduler().createTaskBuilder().execute(() -> updateOverview(event.getTargetInventory(), trade)).delayTicks(1).submit(SafeTrade.getPlugin());

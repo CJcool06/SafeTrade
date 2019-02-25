@@ -210,6 +210,11 @@ public class Trade {
             });
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
+        Sponge.getScheduler().createTaskBuilder().execute(() -> {
+            sides[0].getPlayer().ifPresent(Player::closeInventory);
+            sides[1].getPlayer().ifPresent(Player::closeInventory);
+        }).delayTicks(1).submit(SafeTrade.getPlugin());
+
         SafeTrade.EVENT_BUS.post(new TradeEvent.Executed.SuccessfulTrade(this, TradeResult.SUCCESS));
         setState(TradeState.ENDED);
 
@@ -222,23 +227,23 @@ public class Trade {
     public TradeResult forceEnd() {
         unloadToStorages();
         tradeChannel.clearMembers();
-
         Tracker.removeActiveTrade(this);
+
+        sides[0].getPlayer().ifPresent(player -> {
+            PlayerStorage storage = Tracker.getOrCreateStorage(player);
+            storage.giveItems();
+            storage.givePokemon();
+            player.setMessageChannel(MessageChannel.TO_ALL);
+        });
+        sides[1].getPlayer().ifPresent(player -> {
+            PlayerStorage storage = Tracker.getOrCreateStorage(player);
+            storage.giveItems();
+            storage.givePokemon();
+            player.setMessageChannel(MessageChannel.TO_ALL);
+        });
         Sponge.getScheduler().createTaskBuilder().execute(() -> {
-            sides[0].getPlayer().ifPresent(player -> {
-                player.closeInventory();
-                PlayerStorage storage = Tracker.getOrCreateStorage(player);
-                storage.giveItems();
-                storage.givePokemon();
-                player.setMessageChannel(MessageChannel.TO_ALL);
-            });
-            sides[1].getPlayer().ifPresent(player -> {
-                player.closeInventory();
-                PlayerStorage storage = Tracker.getOrCreateStorage(player);
-                storage.giveItems();
-                storage.givePokemon();
-                player.setMessageChannel(MessageChannel.TO_ALL);
-            });
+            sides[0].getPlayer().ifPresent(Player::closeInventory);
+            sides[1].getPlayer().ifPresent(Player::closeInventory);
         }).delayTicks(1).submit(SafeTrade.getPlugin());
 
         SafeTrade.EVENT_BUS.post(new TradeEvent.Cancelled(this));
@@ -373,7 +378,7 @@ public class Trade {
                         }).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Main.getQuit()) && state == TradeState.TRADING) {
-                        forceEnd();
+                        Sponge.getScheduler().createTaskBuilder().execute(this::forceEnd).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Main.getMoneyStorage(side))) {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventory(InventoryType.MONEY)).delayTicks(1).submit(SafeTrade.getPlugin());
