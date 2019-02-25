@@ -18,7 +18,7 @@ plugins {
 apply plugin: 'net.minecraftforge.gradle.forge'
 
 
-version = "1.12.2-2.0.2-PIXELMON"
+version = "1.12.2-2.0.3-PIXELMON"
 group = "io.github.cjcool06"
 archivesBaseName = "SafeTrade"
 

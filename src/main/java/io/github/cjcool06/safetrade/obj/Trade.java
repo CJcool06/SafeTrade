@@ -47,6 +47,7 @@ public class Trade {
 
     private TradeState state = TradeState.TRADING;
     private Inventory overviewInventory;
+    private List<UUID> clickingMainInv = new ArrayList<>();
 
     public Trade(Player participant1, Player participant2) {
         this(UUID.randomUUID(), participant1, participant2);
@@ -328,9 +329,16 @@ public class Trade {
     private void handleClick(ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
+            // This prevents players from clicking more than once per tick.
+            if (clickingMainInv.contains(player.getUniqueId())) {
+                return;
+            }
+
             event.getTransactions().forEach(transaction -> {
                 ItemStack item = transaction.getOriginal().createStack();
                 Optional<Side> optSide = getSide(player.getUniqueId());
+                clickingMainInv.add(player.getUniqueId());
+                Sponge.getScheduler().createTaskBuilder().execute(() -> clickingMainInv.remove(player.getUniqueId())).delayTicks(1).submit(SafeTrade.getPlugin());
 
                 // Only players in a side can use these buttons
                 if (optSide.isPresent()) {
