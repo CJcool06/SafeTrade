@@ -310,7 +310,7 @@ public class Trade {
                 ItemStack item = transaction.getOriginal().createStack();
                 Optional<Side> optSide = getSide(player.getUniqueId());
                 clickingMainInv.add(player.getUniqueId());
-                Sponge.getScheduler().createTaskBuilder().execute(() -> clickingMainInv.remove(player.getUniqueId())).delayTicks(1).submit(SafeTrade.getPlugin());
+                Sponge.getScheduler().createTaskBuilder().execute(() -> clickingMainInv.remove(player.getUniqueId())).delayTicks(10).submit(SafeTrade.getPlugin());
 
                 // Only players in a side can use these buttons
                 if (optSide.isPresent()) {
@@ -344,7 +344,7 @@ public class Trade {
                         }).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Main.getQuit()) && state == TradeState.TRADING) {
-                        Sponge.getScheduler().createTaskBuilder().execute(this::forceEnd).delayTicks(1).submit(SafeTrade.getPlugin());
+                        forceEnd();
                     }
                     else if (item.equalTo(ItemUtils.Main.getMoneyStorage(side))) {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventory(InventoryType.MONEY)).delayTicks(1).submit(SafeTrade.getPlugin());
