@@ -34,6 +34,8 @@ public class LogUtils {
      * This method loops through one of the participants, as both participants will have the logs of their trades.
      * If for some reason one of the users has had their logs removed, you can swap the parameters around.
      *
+     * Won't get legacy logs due to an oversight by me in the {@link Log} class. Fuck me.
+     *
      * @param participant0 - The first participant of the trade
      * @param participant1 - The second participant of the trade
      * @return - List of logs that had both participants
@@ -42,8 +44,11 @@ public class LogUtils {
         ArrayList<Log> logs = new ArrayList<>();
         ArrayList<Log> logsParticipant0 = DataManager.getLogs(participant0);
         for (Log log : logsParticipant0) {
-            if (log.getParticipantUUID().equals(participant1.getUniqueId()) || log.getOtherParticipantUUID().equals(participant1.getUniqueId())) {
-                logs.add(log);
+            // Legacy parcer - Parces improved logs from legacy logs. Legacy logs will cause NPE.
+            if (log.getParticipantUUID() != null) {
+                if (log.getParticipantUUID().equals(participant1.getUniqueId()) || log.getOtherParticipantUUID().equals(participant1.getUniqueId())) {
+                    logs.add(log);
+                }
             }
         }
 

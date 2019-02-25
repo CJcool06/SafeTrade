@@ -9,7 +9,7 @@ plugins {
 }
 
 
-version = "1.12.2-2.0.2-SPONGE"
+version = "1.12.2-2.0.3-SPONGE"
 group = "io.github.cjcool06"
 archivesBaseName = "SafeTrade"
 
