@@ -135,9 +135,7 @@ public class Trade {
     }
 
     /**
-     * Pause and un-pause the trade.
-     *
-     * <p>If the trade is executing or ended, the trade cannot be paused or un-paused.</p>
+     * Set the {@link TradeState} of the trade.
      *
      * @param state True to pause, false to un-pause
      */
