@@ -47,7 +47,8 @@ public class CommandWrapper {
 
             return new CommandWrapper(cmd, commandType);
         } catch (Exception e) {
-            SafeTrade.getLogger().warn("There was a problem deserialising a CommandWrapper from a container.");
+            SafeTrade.getLogger().warn("There was a problem deserialising a CommandWrapper from a container." +
+                    "\n" + e.getMessage() + "\n");
             e.printStackTrace();
             return null;
         }
