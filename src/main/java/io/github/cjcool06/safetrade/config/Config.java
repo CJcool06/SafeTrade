@@ -12,11 +12,14 @@ public class Config {
     private static ConfigurationLoader<CommentedConfigurationNode> loader;
     private static CommentedConfigurationNode node;
 
-    public static String prefix = "&9&lSafeTrade &7&l>> &r";
     public static boolean showEggStats = false;
     public static boolean showEggName = true;
-    public static boolean gcLogsEnabled = false;
+    public static boolean broadcastTradeOverviews = false;
+
+    public static boolean gcLogsEnabled = true;
     public static int gcLogsExpiryTime = 31;
+
+    public static boolean gcStoragesEnabled = true;
 
     public static void load() {
         File file = new File(DIR, "safetrade.conf");
@@ -28,11 +31,12 @@ public class Config {
                 save();
             }
             else {
-                prefix = node.getNode("Prefix").getString(prefix);
-                showEggStats = node.getNode("ShowEggStats").getBoolean(showEggStats);
+                showEggStats = node.getNode("ShowEggStats").getBoolean();
                 showEggName = node.getNode("ShowEggName").getBoolean();
-                gcLogsEnabled = node.getNode("GarbageCollector", "Logs", "Enabled").getBoolean(gcLogsEnabled);
-                gcLogsExpiryTime = node.getNode("GarbageCollector", "Logs", "ExpiryTime").getInt(gcLogsExpiryTime);
+                broadcastTradeOverviews = node.getNode("BroadcastTradeOverviews").getBoolean();
+                gcLogsEnabled = node.getNode("GarbageCollector", "Logs", "Enabled").getBoolean();
+                gcLogsExpiryTime = node.getNode("GarbageCollector", "Logs", "ExpiryTime").getInt();
+                gcStoragesEnabled = node.getNode("GarbageCollector", "Storages").getBoolean();
             }
         } catch (Exception e) {
             SafeTrade.getLogger().error("Could not load config.");
@@ -41,11 +45,29 @@ public class Config {
 
     public static void save() {
         try {
-            node.getNode("Prefix").setValue(prefix);
+            node.getNode("ShowEggStats").setComment("Show the stats of the Pokemon inside the egg.");
             node.getNode("ShowEggStats").setValue(showEggStats);
+
+            node.getNode("ShowEggName").setComment("Show the name of the Pokemon inside the egg.");
             node.getNode("ShowEggName").setValue(showEggName);
+
+            node.getNode("BroadcastTradeOverviews").setComment("Trade overviews will be seen by all players in chat.");
+            node.getNode("BroadcastTradeOverviews").setValue(broadcastTradeOverviews);
+
+            node.getNode("GarbageCollector").setComment("The GC improves the efficiency of SafeTrade." +
+                    "\n" +
+                    "\nDo not change anything unless you know what you're doing.");
+
+            node.getNode("GarbageCollector", "Logs").setComment("Quicken log checkups by deleting old logs.");
+
+            node.getNode("GarbageCollector", "Logs", "Enabled").setComment("Enables the GC to handle logs.");
             node.getNode("GarbageCollector", "Logs", "Enabled").setValue(gcLogsEnabled);
+
+            node.getNode("GarbageCollector", "Logs", "ExpiryTime").setComment("The age a log must be to be deleted, in days.");
             node.getNode("GarbageCollector", "Logs", "ExpiryTime").setValue(gcLogsExpiryTime);
+
+            node.getNode("GarbageCollector", "Storages").setComment("Quicken startup load times by deleting empty storage files.");
+            node.getNode("GarbageCollector", "Storages").setValue(gcStoragesEnabled);
             loader.save(node);
         } catch (Exception e) {
             SafeTrade.getLogger().error("Could not save config.");
