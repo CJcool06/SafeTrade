@@ -49,6 +49,8 @@ public class Trade {
     private Inventory overviewInventory;
     private List<UUID> clickingMainInv = new ArrayList<>();
 
+    private Log log = null;
+
     public Trade(Player participant1, Player participant2) {
         this(UUID.randomUUID(), participant1, participant2);
     }
@@ -93,6 +95,17 @@ public class Trade {
      */
     public TradeState getState() {
         return state;
+    }
+
+    /**
+     * Gets the {@link Log} this trade produced.
+     *
+     * The log is only present AFTER the trade has been executed.
+     *
+     * @return The log, if present
+     */
+    public Optional<Log> getLog() {
+        return Optional.ofNullable(log);
     }
 
     /**
@@ -156,9 +169,19 @@ public class Trade {
         if (SafeTrade.EVENT_BUS.post(new TradeEvent.Executing(this))) {
             return TradeResult.CANCELLED;
         }
+
+        TradeResult result = handleTrade();
+
         LogUtils.logAndSave(this);
         Tracker.removeActiveTrade(this);
-        return handleTrade();
+
+        // For firing the event
+        log = new Log(this);
+        setState(TradeState.ENDED);
+
+        SafeTrade.EVENT_BUS.post(new TradeEvent.Executed.Success(this, TradeResult.SUCCESS));
+
+        return result;
     }
 
     /**
@@ -182,6 +205,7 @@ public class Trade {
                 // Requires tick delay otherwise the player will become glitched
                 Sponge.getScheduler().createTaskBuilder().execute(() -> {
                     EntityPixelmon pixelmon = pokemon.getOrSpawnPixelmon((EntityPlayerMP)player);
+                    // TODO: Are there specific trades that won't work when just testing a random enum (ie. Abomasnow)
                     if (pixelmon.testTradeEvolution(EnumSpecies.Abomasnow)) {
                         EvolutionListener.ongoingEvolutions.add(pixelmon.getUniqueID());
                     }
@@ -212,9 +236,6 @@ public class Trade {
             sides[0].getPlayer().ifPresent(Player::closeInventory);
             sides[1].getPlayer().ifPresent(Player::closeInventory);
         }).delayTicks(1).submit(SafeTrade.getPlugin());
-
-        SafeTrade.EVENT_BUS.post(new TradeEvent.Executed.SuccessfulTrade(this, TradeResult.SUCCESS));
-        setState(TradeState.ENDED);
 
         return TradeResult.SUCCESS;
     }
