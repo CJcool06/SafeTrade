@@ -16,15 +16,21 @@ import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.persistence.DataFormats;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
+import org.spongepowered.api.event.cause.Cause;
+import org.spongepowered.api.event.cause.EventContext;
 import org.spongepowered.api.item.inventory.Inventory;
 import org.spongepowered.api.item.inventory.InventoryTransformations;
 import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 import org.spongepowered.api.item.inventory.entity.PlayerInventory;
 import org.spongepowered.api.item.inventory.transaction.InventoryTransactionResult;
+import org.spongepowered.api.service.economy.Currency;
+import org.spongepowered.api.service.economy.transaction.ResultType;
+import org.spongepowered.api.service.economy.transaction.TransactionResult;
 import org.spongepowered.api.service.user.UserStorageService;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
 
 // TODO: Make PlayerStorage GUI that admins can edit
@@ -40,6 +46,7 @@ public class PlayerStorage {
     private final List<ItemStackSnapshot> items = new ArrayList<>();
     private final List<Pokemon> pokemons = new ArrayList<>();
     private final List<CommandWrapper> commands = new ArrayList<>();
+    private final List<MoneyWrapper> money = new ArrayList<>();
 
     private boolean needsSaving = false;
 
@@ -47,11 +54,12 @@ public class PlayerStorage {
         this.playerUUID = user.getUniqueId();
     }
 
-    private PlayerStorage(UUID uuid, List<ItemStackSnapshot> items, List<Pokemon> pokemons, List<CommandWrapper> commands) {
+    private PlayerStorage(UUID uuid, List<ItemStackSnapshot> items, List<Pokemon> pokemons, List<CommandWrapper> commands, List<MoneyWrapper> money) {
         this.playerUUID = uuid;
         this.items.addAll(items);
         this.pokemons.addAll(pokemons);
         this.commands.addAll(commands);
+        this.money.addAll(money);
     }
 
     /**
@@ -73,12 +81,67 @@ public class PlayerStorage {
     }
 
     /**
-     * Whether the storage needs to be saved
+     * Gets all {@link MoneyWrapper}s in this storage.
      *
-     * @return True if needs to be saved
+     * @return An unmodifiable list of money wrappers
      */
-    public boolean needsSaving() {
-        return needsSaving;
+    public List<MoneyWrapper> getMoney() {
+        return Collections.unmodifiableList(money);
+    }
+
+    /**
+     * Adds a {@link MoneyWrapper} to this storage.
+     *
+     * @param moneyWrapper The money wrapper
+     * @return True if successfully added
+     */
+    public boolean addMoney(MoneyWrapper moneyWrapper) {
+        needsSaving = true;
+        return money.add(moneyWrapper);
+    }
+
+    /**
+     * Removes a {@link MoneyWrapper} from this storage.
+     *
+     * @param moneyWrapper The money wrapper
+     * @return True if successfully removed
+     */
+    public boolean removeMoney(MoneyWrapper moneyWrapper) {
+        needsSaving = true;
+        return money.remove(moneyWrapper);
+    }
+
+    /**
+     * Clears all {@link MoneyWrapper}s from this storage.
+     */
+    public void clearMoney() {
+        needsSaving = true;
+        money.clear();
+    }
+
+    /**
+     * Give the money in this storage to the storage owner and remove it.
+     *
+     * If the deposit fails, the money will not be removed.
+     *
+     * @return The {@link MoneyWrapper}s that were successful
+     */
+    public List<MoneyWrapper> giveMoney() {
+        List<MoneyWrapper> successes = new ArrayList<>();
+        Iterator<MoneyWrapper> iter = money.iterator();
+
+        while (iter.hasNext()) {
+            MoneyWrapper wrapper = iter.next();
+
+            TransactionResult result = wrapper.transferBalance(SafeTrade.getEcoService().getOrCreateAccount(getUser().get().getUniqueId()).get());
+
+            if (result.getResult() == ResultType.SUCCESS) {
+                successes.add(wrapper);
+                iter.remove();
+            }
+        }
+
+        return successes;
     }
 
     /**
@@ -274,7 +337,7 @@ public class PlayerStorage {
     }
 
     /**
-     * Clears all commands from this storage.
+     * Clears all {@link CommandWrapper}s from this storage.
      */
     public void clearCommands() {
         needsSaving = true;
@@ -338,11 +401,18 @@ public class PlayerStorage {
         JsonArray itemsArr = new JsonArray();
         JsonArray pokemonsArr = new JsonArray();
         JsonArray commandsArr = new JsonArray();
+        JsonArray moneyArr = new JsonArray();
 
         for (CommandWrapper wrapper : commands) {
             JsonObject cmdObj = new JsonObject();
             wrapper.toContainer(cmdObj);
             commandsArr.add(cmdObj);
+        }
+
+        for (MoneyWrapper wrapper : money) {
+            JsonObject moneyObj = new JsonObject();
+            wrapper.toContainer(moneyObj);
+            moneyArr.add(moneyObj);
         }
 
         for (Pokemon pokemon : pokemons) {
@@ -358,6 +428,7 @@ public class PlayerStorage {
         }
 
         jsonObject.add("PlayerUUID", new JsonPrimitive(playerUUID.toString()));
+        jsonObject.add("Money", moneyArr);
         jsonObject.add("Commands", commandsArr);
         jsonObject.add("Pokemon", pokemonsArr);
         jsonObject.add("Items", itemsArr);
@@ -372,14 +443,23 @@ public class PlayerStorage {
     public static PlayerStorage fromContainer(JsonObject jsonObject) {
         try {
             UUID playerUUID = UUID.fromString(jsonObject.get("PlayerUUID").getAsString());
+
             List<ItemStackSnapshot> items = new ArrayList<>();
             List<Pokemon> pokemons = new ArrayList<>();
             List<CommandWrapper> commands = new ArrayList<>();
+            List<MoneyWrapper> money = new ArrayList<>();
 
             for (JsonElement element : jsonObject.get("Commands").getAsJsonArray()) {
                 CommandWrapper wrapper = CommandWrapper.fromContainer(element.getAsJsonObject());
                 if (wrapper != null) {
-                    commands.add(CommandWrapper.fromContainer(element.getAsJsonObject()));
+                    commands.add(wrapper);
+                }
+            }
+
+            for (JsonElement element : jsonObject.get("Money").getAsJsonArray()) {
+                MoneyWrapper wrapper = MoneyWrapper.fromContainer(element.getAsJsonObject());
+                if (wrapper != null) {
+                    money.add(wrapper);
                 }
             }
 
@@ -391,7 +471,7 @@ public class PlayerStorage {
                 items.add(Sponge.getDataManager().deserialize(ItemStackSnapshot.class, DataFormats.JSON.read(element.getAsString())).get());
             }
 
-            return new PlayerStorage(playerUUID, items, pokemons, commands);
+            return new PlayerStorage(playerUUID, items, pokemons, commands, money);
         } catch (Exception e) {
             SafeTrade.getLogger().warn("There was a problem deserialising a PlayerStorage from a container.");
             e.printStackTrace();
