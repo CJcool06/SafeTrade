@@ -16,21 +16,17 @@ import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.persistence.DataFormats;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
-import org.spongepowered.api.event.cause.Cause;
-import org.spongepowered.api.event.cause.EventContext;
 import org.spongepowered.api.item.inventory.Inventory;
 import org.spongepowered.api.item.inventory.InventoryTransformations;
 import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.item.inventory.ItemStackSnapshot;
 import org.spongepowered.api.item.inventory.entity.PlayerInventory;
 import org.spongepowered.api.item.inventory.transaction.InventoryTransactionResult;
-import org.spongepowered.api.service.economy.Currency;
 import org.spongepowered.api.service.economy.transaction.ResultType;
 import org.spongepowered.api.service.economy.transaction.TransactionResult;
 import org.spongepowered.api.service.user.UserStorageService;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.util.*;
 
 // TODO: Make PlayerStorage GUI that admins can edit
@@ -48,7 +44,7 @@ public class PlayerStorage {
     private final List<CommandWrapper> commands = new ArrayList<>();
     private final List<MoneyWrapper> money = new ArrayList<>();
 
-    private boolean needsSaving = false;
+    private boolean needSaving = false;
 
     public PlayerStorage(User user) {
         this.playerUUID = user.getUniqueId();
@@ -80,6 +76,10 @@ public class PlayerStorage {
         return Sponge.getServiceManager().provide(UserStorageService.class).get().get(playerUUID);
     }
 
+    public boolean needSaving() {
+        return needSaving;
+    }
+
     /**
      * Gets all {@link MoneyWrapper}s in this storage.
      *
@@ -96,7 +96,7 @@ public class PlayerStorage {
      * @return True if successfully added
      */
     public boolean addMoney(MoneyWrapper moneyWrapper) {
-        needsSaving = true;
+        needSaving = true;
         return money.add(moneyWrapper);
     }
 
@@ -107,7 +107,7 @@ public class PlayerStorage {
      * @return True if successfully removed
      */
     public boolean removeMoney(MoneyWrapper moneyWrapper) {
-        needsSaving = true;
+        needSaving = true;
         return money.remove(moneyWrapper);
     }
 
@@ -115,7 +115,7 @@ public class PlayerStorage {
      * Clears all {@link MoneyWrapper}s from this storage.
      */
     public void clearMoney() {
-        needsSaving = true;
+        needSaving = true;
         money.clear();
     }
 
@@ -160,7 +160,7 @@ public class PlayerStorage {
      * @return True if successfully added
      */
     public boolean addItem(ItemStackSnapshot snapshot) {
-        needsSaving = true;
+        needSaving = true;
         return items.add(snapshot);
     }
 
@@ -171,7 +171,7 @@ public class PlayerStorage {
      * @return True if successfully removed
      */
     public boolean removeItem(ItemStackSnapshot snapshot) {
-        needsSaving = true;
+        needSaving = true;
         return items.remove(snapshot);
     }
 
@@ -187,7 +187,7 @@ public class PlayerStorage {
             ItemStack item = iter.next().createStack();
             if (item.equalTo(itemStack)) {
                 iter.remove();
-                needsSaving = true;
+                needSaving = true;
                 return true;
             }
         }
@@ -198,7 +198,7 @@ public class PlayerStorage {
      * Clears all items from this storage.
      */
     public void clearItems() {
-        needsSaving = true;
+        needSaving = true;
         items.clear();
     }
 
@@ -226,7 +226,7 @@ public class PlayerStorage {
             if (prioritisedInv.offer(snapshot.createStack()).getType() == InventoryTransactionResult.Type.SUCCESS) {
                 successes.add(snapshot);
                 iter.remove();
-                needsSaving = true;
+                needSaving = true;
             }
             else {
                 // There will most likely be no space for any of the items left, so no point continuing the iteration.
@@ -253,7 +253,7 @@ public class PlayerStorage {
      * @return True if successfully added
      */
     public boolean addPokemon(Pokemon pokemon) {
-        needsSaving = true;
+        needSaving = true;
         return pokemons.add(pokemon);
     }
 
@@ -264,7 +264,7 @@ public class PlayerStorage {
      * @return True if successfully removed
      */
     public boolean removePokemon(Pokemon pokemon) {
-        needsSaving = true;
+        needSaving = true;
         return pokemons.remove(pokemon);
     }
 
@@ -272,7 +272,7 @@ public class PlayerStorage {
      * Clears all pokemon from this storage.
      */
     public void clearPokemon() {
-        needsSaving = true;
+        needSaving = true;
         pokemons.clear();
     }
 
@@ -294,7 +294,7 @@ public class PlayerStorage {
             if (partyStorage.add(pokemon)) {
                 successes.add(pokemon);
                 iter.remove();
-                needsSaving = true;
+                needSaving = true;
             }
             else {
                 // There are no more spaces in the player's pokemon storage, so no point continuing the iteration.
@@ -321,7 +321,7 @@ public class PlayerStorage {
      * @return True if successfully added
      */
     public boolean addCommand(CommandWrapper commandWrapper) {
-        needsSaving = true;
+        needSaving = true;
         return commands.add(commandWrapper);
     }
 
@@ -332,7 +332,7 @@ public class PlayerStorage {
      * @return True if successfully removed
      */
     public boolean removeCommand(CommandWrapper commandWrapper) {
-        needsSaving = true;
+        needSaving = true;
         return commands.remove(commandWrapper);
     }
 
@@ -340,7 +340,7 @@ public class PlayerStorage {
      * Clears all {@link CommandWrapper}s from this storage.
      */
     public void clearCommands() {
-        needsSaving = true;
+        needSaving = true;
         commands.clear();
     }
 
@@ -350,11 +350,11 @@ public class PlayerStorage {
      * @return True if empty
      */
     public boolean isEmpty() {
-        return items.isEmpty() && pokemons.isEmpty() && commands.isEmpty();
+        return items.isEmpty() && pokemons.isEmpty() && commands.isEmpty() && money.isEmpty();
     }
 
     /**
-     * Executes all of the {@link CommandWrapper}s.
+     * Executes all {@link CommandWrapper}s.
      *
      * <p>If the wrapper requires an online player and one isn't present, it will skip over it.</p>
      *
@@ -369,14 +369,14 @@ public class PlayerStorage {
             if (wrapper.commandType == CommandType.CONSOLE) {
                 wrapper.consoleExecute();
                 iter.remove();
-                needsSaving = true;
+                needSaving = true;
                 commandsExecuted.add(wrapper);
             }
             else if (wrapper.commandType == CommandType.SUDO && getPlayer().isPresent()) {
                 Player player = getPlayer().get();
                 wrapper.sudoExecute(player);
                 iter.remove();
-                needsSaving = true;
+                needSaving = true;
                 commandsExecuted.add(wrapper);
             }
         }
@@ -389,7 +389,7 @@ public class PlayerStorage {
      */
     public void save() {
         DataManager.savePlayerStorage(this);
-        needsSaving = false;
+        needSaving = false;
     }
 
     /**
