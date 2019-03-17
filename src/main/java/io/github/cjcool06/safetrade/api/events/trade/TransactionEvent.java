@@ -1,5 +1,6 @@
 package io.github.cjcool06.safetrade.api.events.trade;
 
+import io.github.cjcool06.safetrade.obj.MoneyWrapper;
 import io.github.cjcool06.safetrade.obj.Vault;
 import net.minecraftforge.fml.common.eventhandler.Cancelable;
 import net.minecraftforge.fml.common.eventhandler.Event;
@@ -170,6 +171,67 @@ public class TransactionEvent extends Event {
             public static class Fail extends Remove {
                 public Fail(Vault vault, com.pixelmonmod.pixelmon.api.pokemon.Pokemon pokemon) {
                     super(vault, pokemon);
+                }
+            }
+        }
+    }
+
+    public static class Money extends TransactionEvent {
+        public final MoneyWrapper wrapper;
+
+        private Money(Vault vault, MoneyWrapper wrapper) {
+            super(vault);
+            this.wrapper = wrapper;
+        }
+
+        public static class Add extends Money {
+
+            private Add(Vault vault, MoneyWrapper wrapper) {
+                super(vault, wrapper);
+            }
+
+            @Cancelable
+            public static class Pre extends Add {
+                private Pre(Vault vault, MoneyWrapper wrapper) {
+                    super(vault, wrapper);
+                }
+            }
+
+            public static class Success extends Add {
+                private Success(Vault vault, MoneyWrapper wrapper) {
+                    super(vault, wrapper);
+                }
+            }
+
+            public static class Fail extends Add {
+                private Fail(Vault vault, MoneyWrapper wrapper) {
+                    super(vault, wrapper);
+                }
+            }
+        }
+
+        public static class Remove extends Money {
+
+            private Remove(Vault vault, MoneyWrapper wrapper) {
+                super(vault, wrapper);
+            }
+
+            @Cancelable
+            public static class Pre extends Remove {
+                private Pre(Vault vault, MoneyWrapper wrapper) {
+                    super(vault, wrapper);
+                }
+            }
+
+            public static class Success extends Remove {
+                private Success(Vault vault, MoneyWrapper wrapper) {
+                    super(vault, wrapper);
+                }
+            }
+
+            public static class Fail extends Remove {
+                private Fail(Vault vault, MoneyWrapper wrapper) {
+                    super(vault, wrapper);
                 }
             }
         }
