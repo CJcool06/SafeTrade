@@ -34,8 +34,8 @@ public class TradeEvent extends Event {
         /**
          * Posted after the {@link Trade} is executed and was successful.
          */
-        public static class SuccessfulTrade extends Executed {
-            public SuccessfulTrade(Trade trade, TradeResult result) {
+        public static class Success extends Executed {
+            public Success(Trade trade, TradeResult result) {
                 super(trade, result);
             }
         }
@@ -43,8 +43,8 @@ public class TradeEvent extends Event {
         /**
          * Posted after the {@link Trade} is executed and was unsuccessful.
          */
-        public static class UnsuccessfulTrade extends Executed {
-            public UnsuccessfulTrade(Trade trade, TradeResult result) {
+        public static class Fail extends Executed {
+            public Fail(Trade trade, TradeResult result) {
                 super(trade, result);
             }
         }
