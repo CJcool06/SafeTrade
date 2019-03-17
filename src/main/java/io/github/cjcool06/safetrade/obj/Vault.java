@@ -32,6 +32,7 @@ import org.spongepowered.api.service.economy.account.Account;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 /**
@@ -90,16 +91,30 @@ public class Vault {
     }
 
     /**
-     * Moves all possessions in the trade (Pokemon, items, money) in to the respective {@link PlayerStorage} and bank account.
-     *
-     * <p>This is useful when a trade is cancelled or the server is stopping.</p>
+     * Moves all possessions in the trade (Pokemon, items, money) in to the respective {@link PlayerStorage}.
      */
     public void unloadToStorage(PlayerStorage storage) {
         getAllItems().forEach(storage::addItem);
         getAllPokemon().forEach(storage::addPokemon);
+        getAllMoney().forEach(storage::addMoney);
+    }
 
-        Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
-        SafeTrade.getEcoService().getOrCreateAccount(storage.playerUUID).get().deposit(currency, account.getBalance(currency), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
+    /**
+     * Converts all money in the vault's {@link Account} to {@link MoneyWrapper}s.
+     *
+     * @return The wrappers
+     */
+    public List<MoneyWrapper> getAllMoney() {
+        List<MoneyWrapper> wrappers = new ArrayList<>();
+
+        for (Currency currency : SafeTrade.getEcoService().getCurrencies()) {
+            BigDecimal balance = account.getBalance(currency);
+            if (balance.longValue() != 0) {
+                wrappers.add(new MoneyWrapper(currency, balance));
+            }
+        }
+
+        return wrappers;
     }
 
     /**
@@ -460,7 +475,7 @@ public class Vault {
     }
 
     /**
-     * Swaps the positions of two {@link EntityPixelmon} in the pokemon inventory.
+     * Swaps the positions of two {@link Pokemon} in the pokemon inventory.
      *
      * <p>One of the indexes can be empty and it will still work.</p>
      *
@@ -578,9 +593,9 @@ public class Vault {
             }
         }
         Sponge.getScheduler().createTaskBuilder().execute(() -> {
-            side.parentTrade.sendMessage(Text.of(TextColors.RED, "Account creation failed."));
-            side.parentTrade.sendMessage(Text.of(TextColors.RED, "Force ending trade to prevent further errors."));
-            side.parentTrade.sendMessage(Text.of(TextColors.RED, "If this keeps happening, please report it to an administrator."));
+            side.parentTrade.sendChannelMessage(Text.of(TextColors.RED, "Account creation failed."));
+            side.parentTrade.sendChannelMessage(Text.of(TextColors.RED, "Force ending trade to prevent further errors."));
+            side.parentTrade.sendChannelMessage(Text.of(TextColors.RED, "If this keeps happening, please report it to an administrator."));
             side.parentTrade.forceEnd();
         }).delayTicks(1).submit(SafeTrade.getPlugin());
 
