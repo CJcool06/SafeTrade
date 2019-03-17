@@ -24,9 +24,6 @@ public class ReloadCommand implements CommandExecutor {
         Config.load();
         src.sendMessage(Text.of(TextColors.GRAY, "Config reloaded."));
 
-        //DataManager.load();
-        //src.sendMessage(Text.of(TextColors.GRAY, "Data loaded."));
-
         return CommandResult.success();
     }
 }
