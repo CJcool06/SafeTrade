@@ -10,10 +10,10 @@ public class ViewerConnectionListener {
     @SubscribeEvent
     public void onViewer(ViewerEvent event) {
         if (event instanceof ViewerEvent.Add) {
-            event.trade.sendMessage(Text.of(TextColors.GOLD, event.viewer.getName(), TextColors.GREEN, " is viewing the trade."));
+            event.trade.sendChannelMessage(Text.of(TextColors.GOLD, event.viewer.getName(), TextColors.GREEN, " is viewing the trade."));
         }
         else if (event instanceof ViewerEvent.Remove) {
-            event.trade.sendMessage(Text.of(TextColors.GOLD, event.viewer.getName(), TextColors.RED, " is no longer viewing the trade."));
+            event.trade.sendChannelMessage(Text.of(TextColors.GOLD, event.viewer.getName(), TextColors.RED, " is no longer viewing the trade."));
         }
     }
 }
