@@ -8,7 +8,10 @@ import org.spongepowered.api.Sponge;
 import org.spongepowered.api.entity.living.player.Player;
 
 /**
- * A CommandWrapper encapsulates the functionality of Sponge's command execution.
+ * A CommandWrapper encapsulates the functionality of Sponge's command execution
+ * that suits {@link PlayerStorage}.
+ *
+ * This wrapper is serialisable.
  */
 public class CommandWrapper {
     public final String cmd;
