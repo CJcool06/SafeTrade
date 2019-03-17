@@ -46,8 +46,6 @@ public class Trade {
     private Inventory overviewInventory;
     private List<UUID> clickingMainInv = new ArrayList<>();
 
-    private Log log = null;
-
     public Trade(Player participant1, Player participant2) {
         this(UUID.randomUUID(), participant1, participant2);
     }
@@ -92,17 +90,6 @@ public class Trade {
      */
     public TradeState getState() {
         return state;
-    }
-
-    /**
-     * Gets the {@link Log} this trade produced.
-     *
-     * The log is only present AFTER the trade has been executed.
-     *
-     * @return The log, if present
-     */
-    public Optional<Log> getLog() {
-        return Optional.ofNullable(log);
     }
 
     /**
@@ -171,9 +158,6 @@ public class Trade {
 
         LogUtils.logAndSave(this);
         Tracker.removeActiveTrade(this);
-
-        // For firing the event
-        log = new Log(this);
         setState(TradeState.ENDED);
 
         SafeTrade.EVENT_BUS.post(new TradeEvent.Executed.Success(this, TradeResult.SUCCESS));
