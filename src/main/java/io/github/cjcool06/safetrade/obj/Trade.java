@@ -1,7 +1,5 @@
 package io.github.cjcool06.safetrade.obj;
 
-import com.pixelmonmod.pixelmon.entities.pixelmon.EntityPixelmon;
-import com.pixelmonmod.pixelmon.enums.EnumSpecies;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.InventoryType;
 import io.github.cjcool06.safetrade.api.enums.TradeResult;
@@ -16,7 +14,6 @@ import io.github.cjcool06.safetrade.listeners.EvolutionListener;
 import io.github.cjcool06.safetrade.trackers.Tracker;
 import io.github.cjcool06.safetrade.utils.ItemUtils;
 import io.github.cjcool06.safetrade.utils.LogUtils;
-import net.minecraft.entity.player.EntityPlayerMP;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.type.DyeColors;
 import org.spongepowered.api.entity.living.player.Player;
@@ -196,39 +193,33 @@ public class Trade {
         PlayerStorage storage0 = Tracker.getOrCreateStorage(side0.getUser().get());
         PlayerStorage storage1 = Tracker.getOrCreateStorage(side1.getUser().get());
 
-        side0.vault.unloadToStorage(storage1);
-        side1.vault.unloadToStorage(storage0);
+        unloadToStorages();
 
+        // Traded Pokemon will NOT evolve if the player is offline.
+        // This is due to Pixelmon needing an EntityPixelmon to check evolution conditions.
         side0.getPlayer().ifPresent(player -> {
             storage0.giveItems();
+            storage0.giveMoney();
             storage0.givePokemon().forEach(pokemon -> {
-                // Requires tick delay otherwise the player will become glitched
-                Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                    EntityPixelmon pixelmon = pokemon.getOrSpawnPixelmon((EntityPlayerMP)player);
-                    // TODO: Are there specific trades that won't work when just testing a random enum (ie. Abomasnow)
-                    if (pixelmon.testTradeEvolution(EnumSpecies.Abomasnow)) {
-                        EvolutionListener.ongoingEvolutions.add(pixelmon.getUniqueID());
-                    }
-                    else {
-                        pixelmon.unloadEntity();
-                    }
-                }).delayTicks(20).submit(SafeTrade.getPlugin());
+                TradeEvolutionWrapper evoWrapper = new TradeEvolutionWrapper(this, player);
+
+                if (evoWrapper.doEvolution(pokemon)) {
+                    SafeTrade.sendMessage(player, Text.of(TextColors.GOLD, "Attempting to evolve ", TextColors.LIGHT_PURPLE, pokemon.getSpecies().getLocalizedName()));
+                    EvolutionListener.ongoingEvolutions.add(pokemon.getUUID());
+                }
             });
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
         side1.getPlayer().ifPresent(player -> {
             storage1.giveItems();
+            storage1.giveMoney();
             storage1.givePokemon().forEach(pokemon -> {
-                // Requires tick delay otherwise the player will become glitched
-                Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                    EntityPixelmon pixelmon = pokemon.getOrSpawnPixelmon((EntityPlayerMP)player);
-                    if (pixelmon.testTradeEvolution(EnumSpecies.Abomasnow)) {
-                        EvolutionListener.ongoingEvolutions.add(pixelmon.getUniqueID());
-                    }
-                    else {
-                        pixelmon.unloadEntity();
-                    }
-                }).delayTicks(20).submit(SafeTrade.getPlugin());
+                TradeEvolutionWrapper evoWrapper = new TradeEvolutionWrapper(this, player);
+
+                if (evoWrapper.doEvolution(pokemon)) {
+                    EvolutionListener.ongoingEvolutions.add(pokemon.getUUID());
+                    SafeTrade.sendMessage(player, Text.of(TextColors.GOLD, "Attempting to evolve ", TextColors.LIGHT_PURPLE, pokemon.getSpecies().getLocalizedName()));
+                }
             });
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
@@ -252,12 +243,14 @@ public class Trade {
             PlayerStorage storage = Tracker.getOrCreateStorage(player);
             storage.giveItems();
             storage.givePokemon();
+            storage.giveMoney();
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
         sides[1].getPlayer().ifPresent(player -> {
             PlayerStorage storage = Tracker.getOrCreateStorage(player);
             storage.giveItems();
             storage.givePokemon();
+            storage.giveMoney();
             player.setMessageChannel(MessageChannel.TO_ALL);
         });
         Sponge.getScheduler().createTaskBuilder().execute(() -> {
@@ -342,11 +335,22 @@ public class Trade {
     }
 
     /**
-     * Sends a {@link Text} message to the trade's {@link TradeChannel}.
+     * Sends a {@link Text} message to both trade participants.
      *
      * @param text The message
      */
     public void sendMessage(Text text) {
+        for (Side side : getSides()) {
+            side.getPlayer().ifPresent(player -> player.sendMessage(text));
+        }
+    }
+
+    /**
+     * Sends a {@link Text} message to the trade's {@link TradeChannel}.
+     *
+     * @param text The message
+     */
+    public void sendChannelMessage(Text text) {
         tradeChannel.send(text);
     }
 
