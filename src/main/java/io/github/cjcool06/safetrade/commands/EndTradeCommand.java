@@ -30,7 +30,7 @@ public class EndTradeCommand implements CommandExecutor {
             src.sendMessage(Text.of(TextColors.RED, "That player is not currently participating in a trade."));
             return CommandResult.success();
         }
-        trade.sendMessage(Text.of(TextColors.GRAY, "Trade force ended by " + src.getName() + "."));
+        trade.sendChannelMessage(Text.of(TextColors.GRAY, "Trade force ended by " + src.getName() + "."));
         trade.forceEnd();
         src.sendMessage(Text.of(TextColors.GREEN, "Force ended " + target.getName() + "'s safe trade."));
 
