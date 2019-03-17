@@ -23,6 +23,11 @@ import java.util.List;
 
 public class LogUtils {
 
+    /**
+     * Creates and saves the {@link Log} of a {@link Trade} to the participants' log files.
+     *
+     * @param trade The trade
+     */
     public static void logAndSave(Trade trade) {
         Log log = new Log(trade);
         Sponge.getScheduler().createTaskBuilder().execute(() -> {
