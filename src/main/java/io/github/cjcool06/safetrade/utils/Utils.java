@@ -128,6 +128,21 @@ public class Utils {
                 .build();
     }
 
+    public static Text getBroadcastOverview(Trade trade) {
+        Text[] texts = getTradeOverviewLore(trade);
+
+        return Text.builder()
+                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, trade.getSides()[0].getUser().get().getName()))
+                        .onHover(TextActions.showText(texts[0]))
+                        .build())
+                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, " & "))
+                        .build())
+                .append(Text.builder().append(Text.of(TextColors.DARK_AQUA, trade.getSides()[1].getUser().get().getName()))
+                        .onHover(TextActions.showText(texts[1]))
+                        .build())
+                .build();
+    }
+
     public static ArrayList<Text> getPokemonLore(Pokemon pokemon) {
         ArrayList<Text> lore = new ArrayList<>();
         if (pokemon.isEgg() && !Config.showEggStats) {
