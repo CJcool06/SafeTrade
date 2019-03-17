@@ -53,8 +53,8 @@ public final class DataManager {
                 JsonObject jsonObject = (JsonObject)parser.parse(new FileReader(file));
                 PlayerStorage storage = PlayerStorage.fromContainer(jsonObject);
 
-                // If the PlayerStorage is empty, the file will be deleted and not added to the cache
-                if (storage.isEmpty()) {
+                // If the PlayerStorage is empty and the GC is enabled, the file will be deleted and not added to the cache
+                if (storage.isEmpty() && Config.gcStoragesEnabled) {
                     emptyFiles.add(file);
                 }
                 else {
@@ -95,7 +95,7 @@ public final class DataManager {
             saveTrade(trade, activeDir);
         }*/
         for (PlayerStorage storage : Tracker.getStorages()) {
-            if (storage.needsSaving()) {
+            if (storage.needSaving()) {
                 storage.save();
             }
         }
