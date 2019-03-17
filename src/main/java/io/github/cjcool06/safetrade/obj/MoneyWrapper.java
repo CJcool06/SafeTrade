@@ -13,14 +13,16 @@ import java.math.BigDecimal;
 
 /**
  * A MoneyWrapper encapsulates the functionality of depositing
- * currency-specific money to {@link Account}s.
+ * currency-specific money to {@link Account}s that suits {@link PlayerStorage}.
+ *
+ * This wrapper is serialisable.
  */
 public class MoneyWrapper {
 
     private final Currency currency;
-    private final long balance;
+    private final BigDecimal balance;
 
-    public MoneyWrapper(Currency currency, long balance) {
+    public MoneyWrapper(Currency currency, BigDecimal balance) {
         this.currency = currency;
         this.balance = balance;
     }
@@ -39,7 +41,7 @@ public class MoneyWrapper {
      *
      * @return The balance
      */
-    public long getBalance() {
+    public BigDecimal getBalance() {
         return balance;
     }
 
@@ -50,18 +52,18 @@ public class MoneyWrapper {
      * @return The result
      */
     public TransactionResult transferBalance(Account account) {
-        return account.deposit(currency, BigDecimal.valueOf(balance), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
+        return account.deposit(currency, balance, Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
     }
 
     public void toContainer(JsonObject jsonObject) {
         jsonObject.add("Currency", new JsonPrimitive(currency.getId()));
-        jsonObject.add("Balance", new JsonPrimitive(balance));
+        jsonObject.add("Balance", new JsonPrimitive(balance.longValue()));
     }
 
     public static MoneyWrapper fromContainer(JsonObject jsonObject) {
         try {
             String currencyID = jsonObject.get("Currency").getAsString();
-            long balance = jsonObject.get("Balance").getAsLong();
+            BigDecimal balance = BigDecimal.valueOf(jsonObject.get("Balance").getAsLong());
 
             for (Currency currency : SafeTrade.getEcoService().getCurrencies()) {
                 if (currency.getId().equals(currencyID)) {
