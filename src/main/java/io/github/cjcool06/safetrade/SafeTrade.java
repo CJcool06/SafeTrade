@@ -26,7 +26,9 @@ import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.plugin.PluginContainer;
 import org.spongepowered.api.service.economy.EconomyService;
 import org.spongepowered.api.text.Text;
-import org.spongepowered.api.text.serializer.TextSerializers;
+import org.spongepowered.api.text.channel.MessageChannel;
+import org.spongepowered.api.text.format.TextColors;
+import org.spongepowered.api.text.format.TextStyles;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
@@ -41,10 +43,13 @@ import java.util.concurrent.TimeUnit;
 public class SafeTrade {
     public static final String ID = "safetrade";
     public static final String NAME = "SafeTrade";
-    public static final String VERSION = "2.0.3";
+    public static final String VERSION = "2.1.0";
     public static final String DESCRIPTION = "Trade Pokemon, Items, and Money safely";
     public static final String AUTHORS = "CJcool06";
+
     public static final EventBus EVENT_BUS = new EventBus();
+    public static final Text prefix = Text.of(TextColors.GREEN, TextStyles.BOLD, "SafeTrade ", TextColors.GOLD, ">> ");
+
     private static SafeTrade plugin;
     private EconomyService economyService = null;
 
@@ -73,15 +78,22 @@ public class SafeTrade {
         EVENT_BUS.register(new ViewerConnectionListener());
         EVENT_BUS.register(new TradeExecutedListener());
         EVENT_BUS.register(new TradeConnectionListener());
+        logger.info("Listeners registered.");
 
         Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade");
+        logger.info("Commands registered.");
 
         Sponge.getServiceManager()
                 .getRegistration(EconomyService.class)
                 .ifPresent(prov -> economyService = prov.getProvider());
 
-        logger.info("Loading configs.");
+        logger.info("Economy service: " + (economyService != null ? "Found" : "Not Found"));
+        if (economyService == null) {
+            logger.warn("No economy service was found. Shit's gonna break.");
+        }
+
         Config.load();
+        logger.info("Config loaded.");
     }
 
     @Listener
@@ -100,13 +112,8 @@ public class SafeTrade {
     // Data load will cause errors if loaded before this event
     @Listener
     public void onPostInit(GameStartingServerEvent event) {
-        logger.info("Loading data...");
         DataManager.load();
         logger.info("Data loaded.");
-        logger.info("Economy plugin: " + (economyService == null ? "Not Found" : "Found"));
-        if (economyService == null) {
-            logger.warn("No economy plugin was found. Shit's gonna break.");
-        }
     }
 
     @Listener
@@ -150,6 +157,10 @@ public class SafeTrade {
     }
 
     public static void sendMessage(Player player, Text text) {
-        player.sendMessage(Text.of(TextSerializers.FORMATTING_CODE.deserialize(Config.prefix), text));
+        player.sendMessage(Text.of(prefix, text));
+    }
+
+    public static void broadcast(Text text) {
+        MessageChannel.TO_ALL.send(Text.of(prefix, text));
     }
 }
