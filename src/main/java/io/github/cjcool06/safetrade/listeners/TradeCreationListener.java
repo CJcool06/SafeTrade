@@ -15,11 +15,11 @@ public class TradeCreationListener {
     @SubscribeEvent
     public void onHandshake(TradeCreationEvent event) {
         Trade trade = event.trade;
-        trade.sendMessage(Text.of(TextColors.GREEN, "Trade channel initialised."));
+        trade.sendChannelMessage(Text.of(TextColors.GREEN, "Trade channel initialised."));
         try {
-            trade.sendMessage(Text.builder().append(Text.of(TextColors.GOLD, "If you're unsure about this chat or how to conduct a SafeTrade, click here.")).onClick(TextActions.openUrl(new URL("https://github.com/CJcool06/SafeTrade/wiki"))).build());
+            trade.sendChannelMessage(Text.builder().append(Text.of(TextColors.GOLD, "If you're unsure about this chat or how to conduct a SafeTrade, click here.")).onClick(TextActions.openUrl(new URL("https://github.com/CJcool06/SafeTrade/wiki"))).build());
         } catch (MalformedURLException mue) {
-            trade.sendMessage(Text.of(TextColors.GOLD, "If you're unsure about this chat or how to conduct a SafeTrade, type /safetrade wiki"));
+            trade.sendChannelMessage(Text.of(TextColors.GOLD, "If you're unsure about this chat or how to conduct a SafeTrade, type /safetrade wiki"));
         }
     }
 }
