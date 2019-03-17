@@ -14,9 +14,9 @@ public class EvolutionListener {
 
     @SubscribeEvent
     public void onEvolve(EvolveEvent.PostEvolve evolve) {
-        if (ongoingEvolutions.contains(evolve.pokemon.getUniqueID())) {
+        if (ongoingEvolutions.contains(evolve.pokemon.getPokemonData().getUUID())) {
+            ongoingEvolutions.remove(evolve.pokemon.getPokemonData().getUUID());
             Sponge.getScheduler().createTaskBuilder().execute(evolve.pokemon::unloadEntity).delayTicks(100).submit(SafeTrade.getPlugin());
-            ongoingEvolutions.remove(evolve.pokemon.getUniqueID());
         }
     }
 }
