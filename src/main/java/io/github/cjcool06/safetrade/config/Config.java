@@ -66,8 +66,11 @@ public class Config {
             node.getNode("GarbageCollector", "Logs", "ExpiryTime").setComment("The age a log must be to be deleted, in days.");
             node.getNode("GarbageCollector", "Logs", "ExpiryTime").setValue(gcLogsExpiryTime);
 
-            node.getNode("GarbageCollector", "Storages").setComment("Quicken startup load times by deleting empty storage files.");
-            node.getNode("GarbageCollector", "Storages").setValue(gcStoragesEnabled);
+            node.getNode("GarbageCollector", "Storages").setComment("Quicken storage saving & loading by deleting empty storage files.");
+
+            node.getNode("GarbageCollector", "Storages", "Enabled").setComment("Enables the GC to handle storages.");
+            node.getNode("GarbageCollector", "Storages", "Enabled").setValue(gcStoragesEnabled);
+
             loader.save(node);
         } catch (Exception e) {
             SafeTrade.getLogger().error("Could not save config.");
