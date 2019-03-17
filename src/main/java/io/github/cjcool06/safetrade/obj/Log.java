@@ -1,5 +1,7 @@
 package io.github.cjcool06.safetrade.obj;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.pixelmonmod.pixelmon.Pixelmon;
 import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
 import io.github.cjcool06.safetrade.SafeTrade;
@@ -27,6 +29,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,9 +44,6 @@ public class Log {
     private UUID uniqueID;
     @Setting
     private String timestamp;
-    @Setting
-    @Deprecated
-    private List<String> jsonTexts;
 
     // Side
     @Setting
@@ -53,7 +53,7 @@ public class Log {
     @Setting
     private List<String> sideItemStrings;
     @Setting
-    private Integer sideMoney;
+    private List<String> sideMoneyStrings;
 
     // Other Side
     @Setting
@@ -63,7 +63,23 @@ public class Log {
     @Setting
     private List<String> otherSideItemStrings;
     @Setting
+    private List<String> otherSideMoneyStrings;
+
+    @Deprecated
+    private List<String> jsonTexts;
+    @Deprecated
+    private Integer sideMoney;
+    @Deprecated
     private Integer otherSideMoney;
+
+    // Caches
+    private List<Pokemon> sideCachedPokemon = null;
+    private List<ItemStackSnapshot> sideCachedItems = null;
+    private List<MoneyWrapper> sideCachedMoney = null;
+
+    private List<Pokemon> otherSideCachedPokemon = null;
+    private List<ItemStackSnapshot> otherSideCachedItems = null;
+    private List<MoneyWrapper> otherSideCachedMoney = null;
 
     /**
      * Used for deserialisation purposes. Do NOT use this constructor
@@ -74,21 +90,20 @@ public class Log {
     public Log(Trade trade) {
         uniqueID = UUID.randomUUID();
         timestamp = getFormatter().format(LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime());
-        //this.jsonTexts = LogUtils.createContents(trade);
 
         // Side
         Side side = trade.getSides()[0];
         participant = side.sideOwnerUUID;
         sidePokemonStrings = serialisePokemon(side.vault.getAllPokemon());
         sideItemStrings = serialiseItemSnapshots(side.vault.getAllItems());
-        sideMoney = side.vault.account.getBalance(SafeTrade.getEcoService().getDefaultCurrency()).intValue();
+        sideMoneyStrings = serialiseMoneyWrappers(side.vault.getAllMoney());
 
         // Other Side
         Side otherSide = trade.getSides()[1];
         otherParticipant = otherSide.sideOwnerUUID;
         otherSidePokemonStrings = serialisePokemon(otherSide.vault.getAllPokemon());
         otherSideItemStrings = serialiseItemSnapshots(otherSide.vault.getAllItems());
-        otherSideMoney = side.vault.account.getBalance(SafeTrade.getEcoService().getDefaultCurrency()).intValue();
+        otherSideMoneyStrings = serialiseMoneyWrappers(otherSide.vault.getAllMoney());
     }
 
     /**
@@ -151,11 +166,16 @@ public class Log {
      * @return The pokemon
      */
     public List<Pokemon> getSidesPokemon() {
+        if (sideCachedPokemon != null) {
+            return Collections.unmodifiableList(sideCachedPokemon);
+        }
+
         List<Pokemon> pokemon = new ArrayList<>();
         for (String pokemonStr : sidePokemonStrings) {
             pokemon.add(Pixelmon.pokemonFactory.create(GsonUtils.deserialize(pokemonStr)));
         }
 
+        sideCachedPokemon = pokemon;
         return pokemon;
     }
 
@@ -165,11 +185,15 @@ public class Log {
      * @return The pokemon
      */
     public List<Pokemon> getOtherSidesPokemon() {
+        if (otherSideCachedPokemon != null) {
+            return Collections.unmodifiableList(otherSideCachedPokemon);
+        }
         List<Pokemon> pokemon = new ArrayList<>();
         for (String pokemonStr : otherSidePokemonStrings) {
             pokemon.add(Pixelmon.pokemonFactory.create(GsonUtils.deserialize(pokemonStr)));
         }
 
+        otherSideCachedPokemon = pokemon;
         return pokemon;
     }
 
@@ -180,6 +204,10 @@ public class Log {
      */
     @SuppressWarnings("all")
     public List<ItemStackSnapshot> getSidesItems() {
+        if (sideCachedItems != null) {
+            return Collections.unmodifiableList(sideCachedItems);
+        }
+
         List<ItemStackSnapshot> items = new ArrayList<>();
         for (String itemStr : sideItemStrings) {
             try {
@@ -189,6 +217,7 @@ public class Log {
             }
         }
 
+        sideCachedItems = items;
         return items;
     }
 
@@ -199,6 +228,10 @@ public class Log {
      */
     @SuppressWarnings("all")
     public List<ItemStackSnapshot> getOtherSidesItems() {
+        if (otherSideCachedItems != null) {
+            return Collections.unmodifiableList(otherSideCachedItems);
+        }
+
         List<ItemStackSnapshot> items = new ArrayList<>();
         for (String itemStr : otherSideItemStrings) {
             try {
@@ -208,6 +241,7 @@ public class Log {
             }
         }
 
+        otherSideCachedItems = items;
         return items;
     }
 
@@ -216,6 +250,7 @@ public class Log {
      *
      * @return The money
      */
+    @Deprecated
     public Integer getSidesMoney() {
         return sideMoney;
     }
@@ -225,8 +260,55 @@ public class Log {
      *
      * @return The money
      */
+    @Deprecated
     public Integer getOtherSidesMoney() {
         return otherSideMoney;
+    }
+
+    /**
+     * Gets the first participant's logged {@link MoneyWrapper}s.
+     *
+     * @return The money wrappers
+     */
+    public List<MoneyWrapper> getSidesMoneyWrappers() {
+        if (sideCachedMoney != null) {
+            return sideCachedMoney;
+        }
+
+        List<MoneyWrapper> moneyWrappers = new ArrayList<>();
+        for (String wrapperStr : sideMoneyStrings) {
+            JsonObject jsonObject = new JsonParser().parse(wrapperStr).getAsJsonObject();
+            MoneyWrapper wrapper = MoneyWrapper.fromContainer(jsonObject);
+            if (wrapper != null) {
+                moneyWrappers.add(wrapper);
+            }
+        }
+
+        sideCachedMoney = moneyWrappers;
+        return moneyWrappers;
+    }
+
+    /**
+     * Gets the other participant's logged {@link MoneyWrapper}s.
+     *
+     * @return The money wrappers
+     */
+    public List<MoneyWrapper> getOtherSidesMoneyWrappers() {
+        if (otherSideCachedMoney != null) {
+            return otherSideCachedMoney;
+        }
+
+        List<MoneyWrapper> moneyWrappers = new ArrayList<>();
+        for (String wrapperStr : otherSideMoneyStrings) {
+            JsonObject jsonObject = new JsonParser().parse(wrapperStr).getAsJsonObject();
+            MoneyWrapper wrapper = MoneyWrapper.fromContainer(jsonObject);
+            if (wrapper != null) {
+                moneyWrappers.add(wrapper);
+            }
+        }
+
+        otherSideCachedMoney = moneyWrappers;
+        return moneyWrappers;
     }
 
     /**
@@ -323,5 +405,16 @@ public class Log {
         }
 
         return pokemonStrings;
+    }
+
+    private List<String> serialiseMoneyWrappers(List<MoneyWrapper> moneyWrappers) {
+        List<String> moneyStrings = new ArrayList<>();
+        for (MoneyWrapper wrapper : moneyWrappers) {
+            JsonObject jsonObject = new JsonObject();
+            wrapper.toContainer(jsonObject);
+            moneyStrings.add(jsonObject.toString());
+        }
+
+        return moneyStrings;
     }
 }
