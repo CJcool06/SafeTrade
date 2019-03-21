@@ -1,16 +1,17 @@
 # SafeTrade
 
-SafeTrade's primary purpose is to reduce the risk associated with trading your Pokemon, Items, and Money with randoms over the internet without sacrificing convenience.
+SafeTrade's primary purpose is to reduce the risk associated with trading your Pokemon, Items, and Money with randoms over the internet.
 
 ## Features
 
-* Pause and exit the trade. This means you can start a trade, pause, get some items from a chest, and resume the trade
-* Supports large trades
-* Simple to use GUI
+* Pause and continue trades whenever you like
+* Helpful for large trades
 * Trade Pokemon directly from your PC
-* A trade overview to ensure both people are happy with the trade
-* Offline storage in-case something goes wrong. Simply reconnect with space in your inv/PC to get the items/pokemon
-* Pokemon will evolve through trades as they would in a trade machine (haunter, etc)
+* A confirmation page to prevent scamming
+* Trade overviews in chat
+* Offline Storage
+* Pokemon will evolve through trades as they would in a trade machine
 * Trade with anyone, anywhere.
-* Detailed logs
-* Staff can monitor a trade
+* Detailed trade logs
+* Staff can watch other players' trades
+* An API
