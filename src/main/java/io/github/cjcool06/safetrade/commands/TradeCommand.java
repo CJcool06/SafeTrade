@@ -72,10 +72,11 @@ public class TradeCommand implements CommandExecutor {
             Player target = args.<Player>getOne("target").get();
 
             if (player.equals(target)) {
-                player.sendMessage(Text.of(Text.of(TextColors.RED, "You can't trade with yourself you banana.")));
+                player.sendMessage(Text.of(Text.of(TextColors.RED, "You can't SafeTrade with yourself you banana.")));
             }
             else if (Tracker.getActiveTrade(player) != null) {
-                player.sendMessage(Text.of(TextColors.RED, "You are already a participant in a SafeTrade."));
+                player.sendMessage(Text.of(TextColors.RED, "You are already a participant in a SafeTrade.",
+                        Text.of(TextColors.GOLD, TextActions.executeCallback(dummySrc -> Tracker.getActiveTrade(player).getSide(player.getUniqueId()).get().changeInventory(InventoryType.MAIN))), "Click here to open your existing trade."));
             }
             else if (Tracker.getActiveTrade(target) != null) {
                 player.sendMessage(Text.of(TextColors.RED, "That player is currently SafeTrading with another player."));
