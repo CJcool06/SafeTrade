@@ -177,7 +177,15 @@ public class Trade {
         PlayerStorage storage0 = Tracker.getOrCreateStorage(side0.getUser().get());
         PlayerStorage storage1 = Tracker.getOrCreateStorage(side1.getUser().get());
 
-        unloadToStorages();
+        boolean s0AutoGive = storage0.isAutoGiveEnabled();
+        boolean s1AutoGive = storage0.isAutoGiveEnabled();
+
+
+        // TODO
+
+        side1.vault.unloadToStorage(storage0);
+        side0.vault.unloadToStorage(storage1);
+        // unloadToStorages();
 
         // Traded Pokemon will NOT evolve if the player is offline.
         // This is due to Pixelmon needing an EntityPixelmon to check evolution conditions.
@@ -185,7 +193,10 @@ public class Trade {
             storage0.giveItems();
             storage0.giveMoney();
             storage0.givePokemon().forEach(pokemon -> {
-                TradeEvolutionWrapper evoWrapper = new TradeEvolutionWrapper(this, player);
+                TradeEvolutionWrapper evoWrapper = new TradeEvolutionWrapper(this, side0);
+
+                evoWrapper.doEvolutions().forEach(p -> SafeTrade.sendMessage(player,
+                        Text.of(TextColors.GOLD, "Your ")));
 
                 if (evoWrapper.doEvolution(pokemon)) {
                     SafeTrade.sendMessage(player, Text.of(TextColors.GOLD, "Attempting to evolve ", TextColors.LIGHT_PURPLE, pokemon.getSpecies().getLocalizedName()));
@@ -249,7 +260,7 @@ public class Trade {
     }
 
     /**
-     * Moves all possessions in the trade (Pokemon, items, money) in to the respective participant's {@link PlayerStorage} and bank account.
+     * Moves all possessions in the trade (Pokemon, items, money) in to the respective participant's {@link PlayerStorage}.
      *
      * <p>This is useful when a trade is cancelled or the server is stopping.</p>
      */
