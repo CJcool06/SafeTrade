@@ -1,6 +1,5 @@
 package io.github.cjcool06.safetrade.api.events.trade;
 
-import io.github.cjcool06.safetrade.api.enums.TradeResult;
 import io.github.cjcool06.safetrade.obj.Trade;
 import net.minecraftforge.fml.common.eventhandler.Cancelable;
 import net.minecraftforge.fml.common.eventhandler.Event;
@@ -24,19 +23,19 @@ public class TradeEvent extends Event {
     }
 
     public static class Executed extends TradeEvent {
-        public final TradeResult result;
+        public final Trade.Result tradeResult;
 
-        private Executed(Trade trade, TradeResult result) {
-            super(trade);
-            this.result = result;
+        private Executed(Trade.Result tradeResult) {
+            super(tradeResult.trade);
+            this.tradeResult = tradeResult;
         }
 
         /**
          * Posted after the {@link Trade} is executed and was successful.
          */
         public static class Success extends Executed {
-            public Success(Trade trade, TradeResult result) {
-                super(trade, result);
+            public Success(Trade.Result tradeResult) {
+                super(tradeResult);
             }
         }
 
@@ -44,8 +43,8 @@ public class TradeEvent extends Event {
          * Posted after the {@link Trade} is executed and was unsuccessful.
          */
         public static class Fail extends Executed {
-            public Fail(Trade trade, TradeResult result) {
-                super(trade, result);
+            public Fail(Trade.Result tradeResult) {
+                super(tradeResult);
             }
         }
     }
@@ -54,8 +53,11 @@ public class TradeEvent extends Event {
      * Posted after the {@link Trade} is cancelled.
      */
     public static class Cancelled extends TradeEvent {
-        public Cancelled(Trade trade) {
-            super(trade);
+        public final Trade.Result tradeResult;
+
+        public Cancelled(Trade.Result tradeResult) {
+            super(tradeResult.trade);
+            this.tradeResult = tradeResult;
         }
     }
 }
