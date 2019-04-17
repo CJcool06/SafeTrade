@@ -55,19 +55,22 @@ public class TradeEvolutionWrapper {
      * @return The result
      */
     public TradeEvolutionWrapper.Result doEvolutions() {
-        Map<Side, List<Pokemon>> successes = new HashMap<>();
+        Map<Side, Map<Pokemon, Pokemon>> successes = new HashMap<>();
 
         for (Side side : trade.getSides()) {
-            successes.put(side, new ArrayList<>());
+            successes.put(side, new HashMap<>());
 
             for (Pokemon pokemon : getPossibleEvolutions(side)) {
                 // The player will always be online at this point
                 EntityPixelmon pixelmon = pokemon.getOrSpawnPixelmon((EntityPlayerMP)side.getPlayer().get());
-
-                if (doEvolution(side, pixelmon)) {
-                    successes.get(side).add(pokemon);
-                }
+                Map<Pokemon, Pokemon> map = doEvolution(side, pixelmon);
                 pixelmon.unloadEntity();
+
+                if (!map.isEmpty()) {
+                    for (Pokemon p : map.keySet()) {
+                        successes.get(side).put(p, map.get(p));
+                    }
+                }
             }
         }
 
@@ -119,7 +122,8 @@ public class TradeEvolutionWrapper {
      * @param pixelmon The Pixelmon
      * @return True if an evolution is scheduled, false if no evolutions were possible
      */
-    private boolean doEvolution(Side side, EntityPixelmon pixelmon) {
+    private Map<Pokemon, Pokemon> doEvolution(Side side, EntityPixelmon pixelmon) {
+        Map<Pokemon, Pokemon> map = new HashMap<>();
         EnumSpecies species = getSpeciesToEvolveWith(pixelmon, side.getOtherSide());
         if (species != null) {
             TradeEvolution evolution = getEvolution(pixelmon, species);
@@ -134,11 +138,12 @@ public class TradeEvolutionWrapper {
                 if (!pixelmon.getPokemonName().equals(EnumSpecies.Shedinja.name)) {
                     Pixelmon.EVENT_BUS.post(new PixelmonReceivedEvent((EntityPlayerMP) side.getPlayer().get(), ReceiveType.Evolution, pixelmon.getPokemonData()));
                 }
-                return true;
+                map.put(pre.getPokemonData(), pixelmon.getPokemonData());
+                return map;
             }
         }
 
-        return false;
+        return map;
     }
 
     /**
@@ -294,9 +299,10 @@ public class TradeEvolutionWrapper {
      */
     public class Result {
         private final Trade trade;
-        private final Map<Side, List<Pokemon>> successes;
+        // Map<Side, Map<PreEvo, PostEvo>> <-- This is what's in this map
+        private final Map<Side, Map<Pokemon, Pokemon>> successes;
 
-        public Result(Trade trade, Map<Side, List<Pokemon>> successes) {
+        public Result(Trade trade, Map<Side, Map<Pokemon, Pokemon>> successes) {
             this.trade = trade;
             this.successes = successes;
         }
@@ -315,7 +321,7 @@ public class TradeEvolutionWrapper {
          *
          * @return The successes
          */
-        public Map<Side, List<Pokemon>> getSuccesses() {
+        public Map<Side, Map<Pokemon, Pokemon>> getSuccesses() {
             return Collections.unmodifiableMap(successes);
         }
 
@@ -326,8 +332,8 @@ public class TradeEvolutionWrapper {
          * @param side The side
          * @return The successes of the side
          */
-        public List<Pokemon> getSuccessesOf(Side side) {
-            return successes.getOrDefault(side, new ArrayList<>());
+        public Map<Pokemon, Pokemon> getSuccessesOf(Side side) {
+            return successes.getOrDefault(side, new HashMap<>());
         }
     }
 }
