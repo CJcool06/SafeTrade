@@ -11,10 +11,7 @@ import io.github.cjcool06.safetrade.api.enums.TradeState;
 import io.github.cjcool06.safetrade.api.events.trade.ConnectionEvent;
 import io.github.cjcool06.safetrade.api.events.trade.InventoryChangeEvent;
 import io.github.cjcool06.safetrade.api.events.trade.ViewerEvent;
-import io.github.cjcool06.safetrade.obj.Log;
-import io.github.cjcool06.safetrade.obj.PlayerStorage;
-import io.github.cjcool06.safetrade.obj.Side;
-import io.github.cjcool06.safetrade.obj.Trade;
+import io.github.cjcool06.safetrade.obj.*;
 import io.github.cjcool06.safetrade.trackers.Tracker;
 import io.github.cjcool06.safetrade.utils.ItemUtils;
 import io.github.cjcool06.safetrade.utils.Utils;
@@ -551,7 +548,7 @@ public class InventoryHelper {
 
             // First participant
             if (i == 0) {
-                slot.set(ItemUtils.Logs.getMoney(log.getParticipant(), log.getSidesMoney()));
+                slot.set(ItemUtils.Logs.getMoney(log.getParticipant()));
             }
             else if (i == 1) {
                 slot.set(ItemUtils.Logs.getItems(log.getParticipant()));
@@ -574,7 +571,7 @@ public class InventoryHelper {
                 slot.set(ItemUtils.Logs.getItems(log.getOtherParticipant()));
             }
             else if (i == 8) {
-                slot.set(ItemUtils.Logs.getMoney(log.getOtherParticipant(), log.getOtherSidesMoney()));
+                slot.set(ItemUtils.Logs.getMoney(log.getOtherParticipant()));
             }
 
             else if (i <= 8) {
@@ -607,6 +604,14 @@ public class InventoryHelper {
                     }
                     else if (item.equalTo(ItemUtils.Logs.getPokemon(log.getOtherParticipant()))) {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getLogPokemonInventory(log, log.getOtherParticipant(), log.getOtherSidesPokemon())))
+                                .delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+                    else if (item.equalTo(ItemUtils.Logs.getMoney(log.getParticipant()))) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getLogMoneyInventory(log, log.getParticipant(), log.getSidesMoneyWrappers())))
+                                .delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+                    else if (item.equalTo(ItemUtils.Logs.getMoney(log.getOtherParticipant()))) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getLogMoneyInventory(log, log.getOtherParticipant(), log.getSidesMoneyWrappers())))
                                 .delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                 });
@@ -737,6 +742,8 @@ public class InventoryHelper {
         return inventory;
     }
 
+    // TODO: MoneyWrapper log inventory & click handler
+
     private static void handleLogPokemonClick(Log log, User user, List<Pokemon> pokemon, List<ItemStack> pokemonItems, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
@@ -768,6 +775,97 @@ public class InventoryHelper {
                                 player.sendMessage(Text.of(TextColors.DARK_AQUA, "SafeTrade ", TextColors.GREEN, "has placed ", TextColors.DARK_AQUA, pokemonGiven.size(), TextColors.GREEN, " Pokemon in to your PC:"));
                                 for (Pokemon givenPokemon : pokemonGiven) {
                                     storage.getPlayer().get().sendMessage(Text.of(TextColors.GREEN, "- ", TextColors.AQUA, givenPokemon.getDisplayName()));
+                                }
+                            }
+                            break;
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    //
+    //  INVENTORIES
+    //
+    //  - Log (MoneyWrapper)
+    //
+    //
+    //  CLICKERS
+    //
+    //  - Log (MoneyWrapper)
+    //
+
+    private static Inventory getLogMoneyInventory(Log log, User user, List<MoneyWrapper> moneyWrappers) {
+        List<ItemStack> itemStacks = new ArrayList<>();
+        moneyWrappers.forEach(money -> itemStacks.add(ItemUtils.Money.getMoney(money)));
+        itemStacks.forEach(item -> {
+            List<Text> existingLore = item.get(Keys.ITEM_LORE).isPresent() ? item.get(Keys.ITEM_LORE).get() : new ArrayList<>();
+            if (existingLore.size() != 0) {
+                existingLore.add(Text.of());
+            }
+            existingLore.add(Text.of(TextColors.GREEN, "Left-click to put this item in your inventory or storage"));
+            existingLore.add(Text.of(TextColors.GOLD, "Right-click to put this item in the user's inventory or storage"));
+            item.offer(Keys.ITEM_LORE, existingLore);
+        });
+
+        Inventory inventory = Inventory.builder()
+                .property(InventoryTitle.PROPERTY_NAME, InventoryTitle.of(Text.of(TextColors.DARK_AQUA, user.getName() + "'s Traded Items")))
+                .property(InventoryDimension.PROPERTY_NAME, new InventoryDimension(9, 6))
+                .of(InventoryArchetypes.MENU_GRID)
+                .listener(ClickInventoryEvent.class, event -> handleLogMoneyClick(log, user, moneyWrappers, itemStacks, event))
+                .build(SafeTrade.getPlugin());
+
+        Iterator<ItemStack> iter = itemStacks.iterator();
+
+        inventory.slots().forEach(slot -> {
+            int i = slot.getProperty(SlotIndex.class, "slotindex").get().getValue();
+
+            if (i <= 35) {
+                if (iter.hasNext()) {
+                    slot.set(iter.next());
+                }
+            } else if (i == 45) {
+                slot.set(ItemUtils.Other.getBackButton());
+            } else if (i <= 53) {
+                slot.set(ItemUtils.Other.getFiller(DyeColors.GRAY));
+            }
+        });
+
+        return inventory;
+    }
+
+    private static void handleLogMoneyClick(Log log, User user, List<MoneyWrapper> moneyWrappers, List<ItemStack> moneyWrapperItems, ClickInventoryEvent event) {
+        event.setCancelled(true);
+        event.getCause().first(Player.class).ifPresent(player -> {
+            event.getTransactions().forEach(transaction -> {
+                transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
+                    ItemStack item = transaction.getOriginal().createStack();
+                    PlayerStorage storage;
+
+                    if (event instanceof ClickInventoryEvent.Primary) {
+                        storage = Tracker.getOrCreateStorage(player);
+                    }
+                    else if (event instanceof ClickInventoryEvent.Secondary) {
+                        storage = Tracker.getOrCreateStorage(user);
+                    }
+                    else {
+                        return;
+                    }
+
+                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+
+                    for (ItemStack i : items) {
+                        if (item.equalTo(i)) {
+                            ItemStackSnapshot snapshot = actualItems.get(items.indexOf(i));
+                            storage.addItem(snapshot);
+                            List<ItemStackSnapshot> itemsGiven = storage.giveItems();
+                            if (itemsGiven.size() > 0) {
+                                player.sendMessage(Text.of(TextColors.DARK_AQUA, "SafeTrade ", TextColors.GREEN, "has placed ", TextColors.DARK_AQUA, itemsGiven.size(), TextColors.GREEN, " items in to your inventory:"));
+                                for (ItemStackSnapshot givenSnapshot : itemsGiven) {
+                                    storage.getPlayer().get().sendMessage(Text.of(TextColors.GREEN, givenSnapshot.getQuantity() + "x ", TextColors.AQUA, givenSnapshot.getTranslation().get()));
                                 }
                             }
                             break;
