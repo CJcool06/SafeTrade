@@ -218,6 +218,9 @@ public class InventoryHelper {
 
     public static void handleOverviewClick(Trade trade, ClickInventoryEvent event) {
         event.setCancelled(true);
+        if (trade.getState() !=  TradeState.WAITING_FOR_CONFIRMATION) {
+            return;
+        }
         event.getCause().first(Player.class).ifPresent(player -> {
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
