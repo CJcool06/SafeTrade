@@ -336,4 +336,15 @@ public class TradeEvolutionWrapper {
             return successes.getOrDefault(side, new HashMap<>());
         }
     }
+
+    /**
+     * Creates a dummy {@link Result}.
+     *
+     * This dummy has an initialised state, but empty.
+     *
+     * @return The dummy result
+     */
+    public  Result DUMMY() {
+        return new Result(trade, new HashMap<>());
+    }
 }
