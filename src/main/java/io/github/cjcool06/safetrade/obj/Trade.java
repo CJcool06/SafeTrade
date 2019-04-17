@@ -377,7 +377,6 @@ public class Trade {
                                 setState(TradeState.WAITING_FOR_CONFIRMATION);
                                 side.changeInventory(InventoryType.OVERVIEW);
                                 side.getOtherSide().changeInventory(InventoryType.OVERVIEW);
-                                setState(TradeState.WAITING_FOR_CONFIRMATION);
                             }
                             else {
                                 reformatInventory();
