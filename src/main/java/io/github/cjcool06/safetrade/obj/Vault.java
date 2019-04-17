@@ -94,9 +94,9 @@ public class Vault {
      * Moves all possessions in the trade (Pokemon, items, money) in to the respective {@link PlayerStorage}.
      */
     public void unloadToStorage(PlayerStorage storage) {
-        getAllItems().forEach(storage::addItem);
-        getAllPokemon().forEach(storage::addPokemon);
-        getAllMoney().forEach(storage::addMoney);
+        storage.addItems(getAllItems());
+        storage.addPokemon(getAllPokemon());
+        storage.addMoney(getAllMoney());
     }
 
     /**
