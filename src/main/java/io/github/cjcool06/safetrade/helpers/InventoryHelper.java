@@ -32,6 +32,7 @@ import org.spongepowered.api.item.inventory.property.InventoryDimension;
 import org.spongepowered.api.item.inventory.property.InventoryTitle;
 import org.spongepowered.api.item.inventory.property.SlotIndex;
 import org.spongepowered.api.service.economy.Currency;
+import org.spongepowered.api.service.economy.EconomyService;
 import org.spongepowered.api.service.economy.transaction.ResultType;
 import org.spongepowered.api.service.economy.transaction.TransactionResult;
 import org.spongepowered.api.text.Text;
@@ -45,7 +46,102 @@ import java.util.*;
  * This class is to simply prevent these methods from unnecessarily cluttering up other classes
  */
 public class InventoryHelper {
-    public static HashMap<Side, Integer> currentPage = new HashMap<>();
+
+    //
+    // Default open handler for main trade inventories
+    //
+    // Default close handler for main trade inventories
+    //
+
+    public static void handleOpen(Trade trade, InteractInventoryEvent.Open event) {
+        event.getCause().first(Player.class).ifPresent(player -> {
+            Optional<Side> optSide = trade.getSide(player.getUniqueId());
+            // The player is a participant of a side of the trade.
+            if (optSide.isPresent()) {
+                Side side = optSide.get();
+                // If the side is paused, it means that they are reconnecting to the trade.
+                // If the side is not paused, it means they have been transferred from another trade-related inventory and is not considered as a trade connection
+                if (side.isPaused()) {
+                    if (SafeTrade.EVENT_BUS.post(new ConnectionEvent.Join.Pre(side))) {
+                        event.setCancelled(true);
+                        return;
+                    }
+                    side.setPaused(false);
+                    SafeTrade.EVENT_BUS.post(new ConnectionEvent.Join.Post(side));
+                    if (side.currentInventory == InventoryType.MAIN) {
+                        Sponge.getScheduler().createTaskBuilder().execute(trade::reformatInventory).delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+                }
+                else {
+                    Sponge.getScheduler().createTaskBuilder().execute(() -> SafeTrade.EVENT_BUS.post(new InventoryChangeEvent.Post(side))).delayTicks(1).submit(SafeTrade.getPlugin());
+                }
+            }
+            // An unauthorized player is attempting to open the trade unexpectedly
+            // This will happen if the player doesn't come through Trade#addViewer
+            else if (!trade.getViewers().contains(player)) {
+                if (SafeTrade.EVENT_BUS.post(new ViewerEvent.Add.Pre(trade, player))) {
+                    event.setCancelled(true);
+                    return;
+                }
+                trade.addViewer(player, false);
+                SafeTrade.EVENT_BUS.post(new ViewerEvent.Add.Post(trade, player));
+            }
+        });
+    }
+
+    public static void handleBasicClose(Trade trade, InventoryType inventoryType, InteractInventoryEvent.Close event) {
+        event.getCause().first(Player.class).ifPresent(player -> {
+            Optional<Side> optSide = trade.getSide(player.getUniqueId());
+            // The player is a participant of a side of the trade.
+            if (optSide.isPresent()) {
+                Side side = optSide.get();
+                // Side#changeInventory changes the current inventory
+                // Therefore if the current inventory is for this inventory, the player is exiting the trade and not changing inventories
+                // This will not work correctly if Player#changeInventory is used instead of Side#changeInventory
+                // When currentInventory equals MAIN AND this inventoryType is NOT MAIN, the player is accessing the other side's inventories
+                if (side.currentInventory.equals(inventoryType) || side.currentInventory.equals(InventoryType.NONE) || !(side.currentInventory.equals(InventoryType.MAIN) && !inventoryType.equals(InventoryType.MAIN))) {
+                    side.setReady(false);
+                    side.setPaused(true);
+                    side.currentInventory = InventoryType.NONE;
+                    Sponge.getScheduler().createTaskBuilder().execute(side.parentTrade::reformatInventory).delayTicks(1).submit(SafeTrade.getPlugin());
+                    SafeTrade.EVENT_BUS.post(new ConnectionEvent.Left(side));
+                }
+            }
+            // Else, the player must be a viewer
+            else {
+                Sponge.getScheduler().createTaskBuilder().execute(() -> {
+                    // If the viewer is not viewing an inventory after 1 tick, they have exited the trade.
+                    // I have yet to test what happens if a viewer is FORCED to open an unrelated inventory. If I'd have to guess, this code block would not be executed
+                    // as the player will have the unrelated inventory open, therefore the player will continue to be considered as a viewer.
+                    // From what I can think of there is no inherent harm due to this happening, just something to keep in mind.
+                    if (!player.isViewingInventory()) {
+                        if (SafeTrade.EVENT_BUS.post(new ViewerEvent.Remove.Pre(trade, player))) {
+                            if (player.isOnline()) {
+                                trade.getSides()[0].changeInventoryForViewer(player, inventoryType);
+                            }
+                        }
+                        else {
+                            trade.removeViewer(player, false);
+                            SafeTrade.EVENT_BUS.post(new ViewerEvent.Remove.Post(trade, player));
+                        }
+                    }
+                }).delayTicks(1).submit(SafeTrade.getPlugin());
+            }
+        });
+    }
+
+    //
+    //  INVENTORIES
+    //
+    //  - Money (Main)
+    //
+    //
+    //  CLICKERS
+    //
+    //  - Money (Main)
+    //
+
+    private static Map<Inventory, Currency> currentCurrency = new HashMap<>();
 
     public static Inventory buildAndGetMoneyInventory(Side side) {
         Inventory inventory = Inventory.builder()
@@ -57,6 +153,12 @@ public class InventoryHelper {
                 .listener(InteractInventoryEvent.Open.class, event -> handleOpen(side.parentTrade, event))
                 .build(SafeTrade.getPlugin());
 
+        updateMoneyInventory(inventory, side);
+
+        return inventory;
+    }
+
+    public static void updateMoneyInventory(Inventory inventory, Side side) {
         inventory.slots().forEach(slot -> {
             int i = slot.getProperty(SlotIndex.class, "slotindex").get().getValue();
 
@@ -84,19 +186,167 @@ public class InventoryHelper {
             else if (i == 18) {
                 slot.set(ItemUtils.Other.getBackButton());
             }
-            else if (i == 22) {
+            else if (i == 21) {
                 slot.set(ItemUtils.Money.getTotalMoney(side));
             }
-            else if (i <= 25) {
-                slot.set(ItemUtils.Other.getFiller(DyeColors.GRAY));
+            else if (i == 23) {
+                slot.set(ItemUtils.Money.getPlayersMoney(side, currentCurrency.getOrDefault(inventory, SafeTrade.getEcoService().getDefaultCurrency())));
             }
             else if (i == 26) {
-                slot.set(ItemUtils.Money.getPlayersMoney(side));
+                slot.set(ItemUtils.Money.changeCurrency());
+            }
+            else if (i <= 26) {
+                slot.set(ItemUtils.Other.getFiller(DyeColors.GRAY));
             }
         });
+    }
+
+    public static void handleMoneyClick(Side side, ClickInventoryEvent event) {
+        event.setCancelled(true);
+        event.getCause().first(Player.class).ifPresent(player -> {
+            event.getTransactions().forEach(transaction -> {
+                transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
+                    ItemStack item = transaction.getOriginal().createStack();
+
+                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() ->
+                                side.changeInventoryForViewer(player, side.parentTrade.getState() == TradeState.WAITING_FOR_CONFIRMATION ? InventoryType.OVERVIEW : InventoryType.MAIN)
+                        ).delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+                    // If player is not the in the side of this vault, or the if the vault is locked, or they didn't left/right click, nothing will happen.
+                    // Checking for player is redundant when going through the main trade inventory, but I'll keep it here in-case a player somehow opens another side's money inventory
+                    else if ((player.getUniqueId().equals(side.sideOwnerUUID) && !side.vault.isLocked() && (event instanceof ClickInventoryEvent.Primary || event instanceof ClickInventoryEvent.Secondary))
+                            && side.parentTrade.getState() == TradeState.TRADING) {
+
+                        if (item.equalTo(ItemUtils.Money.changeCurrency())) {
+                            Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(buildAndGetCurrenciesInventory(side, SafeTrade.getEcoService(), event.getTargetInventory()))).delayTicks(1).submit(SafeTrade.getPlugin());
+                            return;
+                        }
+
+                        for (int i = 1; i <= 1000000; i *= 10) {
+
+                            if (item.equalTo(ItemUtils.Money.getMoneyBars(i))) {
+                                Currency currency = currentCurrency.getOrDefault(event.getTargetInventory(), SafeTrade.getEcoService().getDefaultCurrency());
+                                // Left clicking = adding money to trade
+                                if (event instanceof ClickInventoryEvent.Primary) {
+                                    TransactionResult result = SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get()
+                                            .transfer(side.vault.account, currency, BigDecimal.valueOf(i), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
+
+                                    if (result.getResult() == ResultType.SUCCESS) {
+                                        side.sendMessage(Text.of(TextColors.GREEN, "Added " + NumberFormat.getNumberInstance(Locale.US).format(i) + " ", currency.getPluralDisplayName(), " to the trade."));
+                                        Sponge.getScheduler().createTaskBuilder().execute(() -> updateMoneyInventory(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
+                                        side.parentTrade.reformatInventory();
+                                    } else {
+                                        side.sendMessage(Text.of(TextColors.RED, "You do not have enough ", currency.getPluralDisplayName(), "."));
+                                    }
+                                }
+                                // Right clicking = removing money from trade
+                                else {
+                                    if (i > side.vault.account.getBalance(currency).intValue()) {
+                                        int val = side.vault.account.getBalance(currency).intValue();
+                                        side.vault.account.transfer(SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get(), currency, side.vault.account.getBalance(currency), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
+                                        side.sendMessage(Text.of(TextColors.GREEN, "Removed " + NumberFormat.getNumberInstance(Locale.US).format(val) + " ", currency.getPluralDisplayName(), " from the trade."));
+                                        Sponge.getScheduler().createTaskBuilder().execute(() -> updateMoneyInventory(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
+                                        side.parentTrade.reformatInventory();
+                                    }
+                                    else {
+                                        TransactionResult result = side.vault.account.transfer(SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get(), currency, BigDecimal.valueOf(i), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
+
+                                        if (result.getResult() == ResultType.SUCCESS) {
+                                            side.sendMessage(Text.of(TextColors.GREEN, "Removed " + NumberFormat.getNumberInstance(Locale.US).format(i) + " ", currency.getPluralDisplayName(), " from the trade."));
+                                            // Refreshes the total money and player money item
+                                            Sponge.getScheduler().createTaskBuilder().execute(() -> updateMoneyInventory(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
+                                            side.parentTrade.reformatInventory();
+                                        } else {
+                                            side.sendMessage(Text.of(TextColors.RED, "There was an error removing " + NumberFormat.getNumberInstance(Locale.US).format(i) + " ", currency.getPluralDisplayName(), " from the trade."));
+                                            side.sendMessage(Text.of(TextColors.RED, "Contact an administrator if this continues."));
+                                        }
+                                    }
+                                }
+
+                                break;
+                            }
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    //
+    //  INVENTORIES
+    //
+    //  - Currencies
+    //
+    //
+    //  CLICKERS
+    //
+    //  - Currencies
+    //
+
+    public static Inventory buildAndGetCurrenciesInventory(Side side, EconomyService economyService, Inventory parentMoneyInventory) {
+        Set<Currency> currencies = economyService.getCurrencies();
+
+        Inventory inventory = Inventory.builder()
+                .property(InventoryTitle.PROPERTY_NAME, InventoryTitle.of(Text.of(TextColors.DARK_AQUA, "Currencies")))
+                .property(InventoryDimension.PROPERTY_NAME, new InventoryDimension(9,(currencies.size() / 9) + 1))
+                .of(InventoryArchetypes.MENU_GRID)
+                .listener(ClickInventoryEvent.class, event -> handleCurrenciesClick(side, event, parentMoneyInventory))
+                .listener(InteractInventoryEvent.Close.class, event -> handleBasicClose(side.parentTrade, InventoryType.MONEY, event))
+                .listener(InteractInventoryEvent.Open.class, event -> handleOpen(side.parentTrade, event))
+                .build(SafeTrade.getPlugin());
+
+        updateCurrenciesInventory(inventory, currencies);
 
         return inventory;
     }
+
+    public static void updateCurrenciesInventory(Inventory inventory, Set<Currency> currencies) {
+        Iterator<Currency> iter = currencies.iterator();
+        inventory.slots().forEach(slot -> {
+            if (iter.hasNext()) {
+                slot.set(ItemUtils.Money.getCurrency(iter.next()));
+            }
+        });
+    }
+
+    public static void handleCurrenciesClick(Side side, ClickInventoryEvent event, Inventory parentMoneyInventory) {
+        event.setCancelled(true);
+        event.getCause().first(Player.class).ifPresent(player -> {
+            event.getTransactions().forEach(transaction -> {
+                ItemStack item = transaction.getOriginal().createStack();
+
+                // If player is not the in the side of this vault, or the if the vault is locked, or they didn't left/right click, nothing will happen.
+                // Checking for player is redundant when going through the main trade inventory, but I'll keep it here in-case a player somehow opens another side's money inventory
+                if ((player.getUniqueId().equals(side.sideOwnerUUID) && !side.vault.isLocked() && (event instanceof ClickInventoryEvent.Primary || event instanceof ClickInventoryEvent.Secondary))
+                        && side.parentTrade.getState() == TradeState.TRADING) {
+
+                    for (Currency currency : SafeTrade.getEcoService().getCurrencies()) {
+                        if (item.equalTo(ItemUtils.Money.getCurrency(currency))) {
+                            currentCurrency.put(parentMoneyInventory, currency);
+                            Sponge.getScheduler().createTaskBuilder().execute(() -> {
+                                updateMoneyInventory(parentMoneyInventory, side);
+                                player.openInventory(parentMoneyInventory);
+                            }).delayTicks(1).submit(SafeTrade.getPlugin());
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    //
+    //  INVENTORIES
+    //
+    //  - PC
+    //
+    //
+    //  CLICKERS
+    //
+    //  - PC
+    //
+
+    private static HashMap<Side, Integer> currentPage = new HashMap<>();
 
     public static Inventory buildAndGetPCInventory(Side side) {
         Inventory inventory = Inventory.builder()
@@ -149,6 +399,105 @@ public class InventoryHelper {
             }
         });
     }
+
+    public static void handlePCClick(Side side, ClickInventoryEvent event) {
+        LinkedHashMap<ItemStack, Pokemon>[] pcArr = Utils.generatePCMaps(side);
+        LinkedHashMap<ItemStack, Pokemon> partyMap = pcArr[0];
+        LinkedHashMap<ItemStack, Pokemon> pcMap = pcArr[1];
+        int page = currentPage.get(side);
+
+        event.setCancelled(true);
+        event.getCause().first(Player.class).ifPresent(player -> {
+            event.getTransactions().forEach(transaction -> {
+                transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
+                    ItemStack item = transaction.getOriginal().createStack();
+
+                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventoryForViewer(player, InventoryType.POKEMON)).delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+                    // If player is not the in the side of this vault, or the if the vault is locked, or they didn't left/right click, nothing will happen.
+                    // Checking for player is redundant when going through the main trade inventory, but I'll keep it here in-case a player somehow opens another side's pc inventory
+                    else if ((player.getUniqueId().equals(side.sideOwnerUUID) && !side.vault.isLocked() && event instanceof ClickInventoryEvent.Primary)
+                            && side.parentTrade.getState() == TradeState.TRADING) {
+                        boolean continueChecks = true;
+                        PlayerPartyStorage partyStorage = Pixelmon.storageManager.getParty(side.getUser().get().getUniqueId());
+                        PCStorage pcStorage = Pixelmon.storageManager.getPCForPlayer(side.getUser().get().getUniqueId());
+
+                        for (ItemStack itemStack : partyMap.keySet()) {
+                            if (itemStack.equalTo(item)) {
+                                Pokemon pokemon = partyMap.get(itemStack);
+
+                                if (PokemonSpec.from("untradeable").matches(pokemon) || partyStorage.countPokemon() <= 1) {
+                                    return;
+                                }
+                                if (Utils.getAllPokemon(partyStorage).contains(pokemon)) {
+                                    if (side.vault.addPokemon(pokemon)) {
+                                        partyStorage.set(partyStorage.getPosition(pokemon), null);
+                                        Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
+                                    }
+                                }
+                                continueChecks = false;
+                                break;
+                            }
+                        }
+                        for (ItemStack itemStack : pcMap.keySet()) {
+                            if (!continueChecks) {
+                                break;
+                            }
+                            if (itemStack.equalTo(item)) {
+                                Pokemon pokemon = pcMap.get(itemStack);
+                                if (PokemonSpec.from("untradeable").matches(pokemon)) {
+                                    return;
+                                }
+                                List<Pokemon> pcPokemon = Utils.getAllPokemon(pcStorage);
+                                if (pcPokemon.contains(pokemon)) {
+                                    if (side.vault.addPokemon(pokemon)) {
+                                        pcStorage.set(pcStorage.getPosition(pokemon), null);
+                                        Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
+                                    }
+                                }
+                                continueChecks = false;
+                                break;
+                            }
+                        }
+
+                        if (continueChecks) {
+                            if (item.equalTo(ItemUtils.PC.getNextPage(page))) {
+                                if (page*30 >= pcMap.size()) {
+                                    currentPage.put(side, 1);
+                                }
+                                else {
+                                    currentPage.put(side, page+1);
+                                }
+                                Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
+                            }
+                            else if (item.equalTo(ItemUtils.PC.getPreviousPage(page))) {
+                                if (page > 1) {
+                                    currentPage.put(side, page-1);
+                                }
+                                else {
+                                    int num = pcMap.size() / 30;
+                                    currentPage.put(side, num+1);
+                                }
+                                Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
+                            }
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    //
+    //  INVENTORIES
+    //
+    //  - Overview
+    //
+    //
+    //  CLICKERS
+    //
+    //  - Overview
+    //
 
     public static Inventory buildAndGetOverviewInventory(Trade trade) {
         Inventory inventory = Inventory.builder()
@@ -267,267 +616,18 @@ public class InventoryHelper {
         });
     }
 
-    public static void handleOpen(Trade trade, InteractInventoryEvent.Open event) {
-        event.getCause().first(Player.class).ifPresent(player -> {
-            Optional<Side> optSide = trade.getSide(player.getUniqueId());
-            // The player is a participant of a side of the trade.
-            if (optSide.isPresent()) {
-                Side side = optSide.get();
-                // If the side is paused, it means that they are reconnecting to the trade.
-                // If the side is not paused, it means they have been transferred from another trade-related inventory and is not considered as a trade connection
-                if (side.isPaused()) {
-                    if (SafeTrade.EVENT_BUS.post(new ConnectionEvent.Join.Pre(side))) {
-                        event.setCancelled(true);
-                        return;
-                    }
-                    side.setPaused(false);
-                    SafeTrade.EVENT_BUS.post(new ConnectionEvent.Join.Post(side));
-                    if (side.currentInventory == InventoryType.MAIN) {
-                        Sponge.getScheduler().createTaskBuilder().execute(trade::reformatInventory).delayTicks(1).submit(SafeTrade.getPlugin());
-                    }
-                }
-                else {
-                    Sponge.getScheduler().createTaskBuilder().execute(() -> SafeTrade.EVENT_BUS.post(new InventoryChangeEvent.Post(side))).delayTicks(1).submit(SafeTrade.getPlugin());
-                }
-            }
-            // An unauthorized player is attempting to open the trade unexpectedly
-            // This will happen if the player doesn't come through Trade#addViewer
-            else if (!trade.getViewers().contains(player)) {
-                if (SafeTrade.EVENT_BUS.post(new ViewerEvent.Add.Pre(trade, player))) {
-                    event.setCancelled(true);
-                    return;
-                }
-                trade.addViewer(player, false);
-                SafeTrade.EVENT_BUS.post(new ViewerEvent.Add.Post(trade, player));
-            }
-        });
-    }
+    /** {@link Log} inventory shit */
 
-    public static void handleBasicClose(Trade trade, InventoryType inventoryType, InteractInventoryEvent.Close event) {
-        event.getCause().first(Player.class).ifPresent(player -> {
-            Optional<Side> optSide = trade.getSide(player.getUniqueId());
-            // The player is a participant of a side of the trade.
-            if (optSide.isPresent()) {
-                Side side = optSide.get();
-                // Side#changeInventory changes the current inventory
-                // Therefore if the current inventory is for this inventory, the player is exiting the trade and not changing inventories
-                // This will not work correctly if Player#changeInventory is used instead of Side#changeInventory
-                // When currentInventory equals MAIN AND this inventoryType is NOT MAIN, the player is accessing the other side's inventories
-                if (side.currentInventory.equals(inventoryType) || side.currentInventory.equals(InventoryType.NONE) || !(side.currentInventory.equals(InventoryType.MAIN) && !inventoryType.equals(InventoryType.MAIN))) {
-                    side.setReady(false);
-                    side.setPaused(true);
-                    side.currentInventory = InventoryType.NONE;
-                    Sponge.getScheduler().createTaskBuilder().execute(side.parentTrade::reformatInventory).delayTicks(1).submit(SafeTrade.getPlugin());
-                    SafeTrade.EVENT_BUS.post(new ConnectionEvent.Left(side));
-                }
-            }
-            // Else, the player must be a viewer
-            else {
-                Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                    // If the viewer is not viewing an inventory after 1 tick, they have exited the trade.
-                    // I have yet to test what happens if a viewer is FORCED to open an unrelated inventory. If I'd have to guess, this code block would not be executed
-                    // as the player will have the unrelated inventory open, therefore the player will continue to be considered as a viewer.
-                    // From what I can think of there is no inherent harm due to this happening, just something to keep in mind.
-                    if (!player.isViewingInventory()) {
-                        if (SafeTrade.EVENT_BUS.post(new ViewerEvent.Remove.Pre(trade, player))) {
-                            if (player.isOnline()) {
-                                trade.getSides()[0].changeInventoryForViewer(player, inventoryType);
-                            }
-                        }
-                        else {
-                            trade.removeViewer(player, false);
-                            SafeTrade.EVENT_BUS.post(new ViewerEvent.Remove.Post(trade, player));
-                        }
-                    }
-                }).delayTicks(1).submit(SafeTrade.getPlugin());
-            }
-        });
-    }
-
-
-    public static void handleMoneyClick(Side side, ClickInventoryEvent event) {
-        event.setCancelled(true);
-        event.getCause().first(Player.class).ifPresent(player -> {
-            event.getTransactions().forEach(transaction -> {
-                transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
-                    ItemStack item = transaction.getOriginal().createStack();
-
-                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() ->
-                                side.changeInventoryForViewer(player, side.parentTrade.getState() == TradeState.WAITING_FOR_CONFIRMATION ? InventoryType.OVERVIEW : InventoryType.MAIN)
-                        ).delayTicks(1).submit(SafeTrade.getPlugin());
-                    }
-                    // If player is not the in the side of this vault, or the if the vault is locked, or they didn't left/right click, nothing will happen.
-                    // Checking for player is redundant when going through the main trade inventory, but I'll keep it here in-case a player somehow opens another side's money inventory
-                    else if ((player.getUniqueId().equals(side.sideOwnerUUID) && !side.vault.isLocked() && (event instanceof ClickInventoryEvent.Primary || event instanceof ClickInventoryEvent.Secondary))
-                            && side.parentTrade.getState() == TradeState.TRADING) {
-                        for (int i = 1; i <= 1000000; i *= 10) {
-
-                            if (item.equalTo(ItemUtils.Money.getMoneyBars(i))) {
-                                Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
-                                // Left clicking = adding money to trade
-                                if (event instanceof ClickInventoryEvent.Primary) {
-                                    TransactionResult result = SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get()
-                                            .transfer(side.vault.account, currency, BigDecimal.valueOf(i), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
-
-                                    if (result.getResult() == ResultType.SUCCESS) {
-                                        side.sendMessage(Text.of(TextColors.GREEN, "Successfully added " + NumberFormat.getNumberInstance(Locale.US).format(i) + " ", currency.getPluralDisplayName(), " to the trade."));
-
-                                        // Refreshes the total money and player money item
-                                        event.getTargetInventory().slots().forEach(s -> {
-                                            int index = s.getProperty(SlotIndex.class, "slotindex").get().getValue();
-                                            if (index == 22) {
-                                                s.set(ItemUtils.Money.getTotalMoney(side));
-                                            }
-                                            else if (index == 26) {
-                                                s.set(ItemUtils.Money.getPlayersMoney(side));
-                                            }
-                                        });
-                                        side.parentTrade.reformatInventory();
-                                    } else {
-                                        side.sendMessage(Text.of(TextColors.RED, "You do not have enough money."));
-                                    }
-                                }
-                                // Right clicking = removing money from trade
-                                else {
-                                    if (i > side.vault.account.getBalance(currency).intValue()) {
-                                        int val = side.vault.account.getBalance(currency).intValue();
-                                        side.vault.account.transfer(SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get(), currency, side.vault.account.getBalance(currency), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
-                                        side.sendMessage(Text.of(TextColors.GREEN, "Successfully removed " + NumberFormat.getNumberInstance(Locale.US).format(val) + " ", currency.getPluralDisplayName(), " from the trade."));
-                                        // Refreshes the total money and player money item
-                                        event.getTargetInventory().slots().forEach(s -> {
-                                            int index = s.getProperty(SlotIndex.class, "slotindex").get().getValue();
-                                            if (index == 22) {
-                                                s.set(ItemUtils.Money.getTotalMoney(side));
-                                            }
-                                            else if (index == 26) {
-                                                s.set(ItemUtils.Money.getPlayersMoney(side));
-                                            }
-                                        });
-                                        side.parentTrade.reformatInventory();
-                                    }
-                                    else {
-                                        TransactionResult result = side.vault.account.transfer(SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get(), currency, BigDecimal.valueOf(i), Cause.of(EventContext.empty(), SafeTrade.getPlugin()));
-
-                                        if (result.getResult() == ResultType.SUCCESS) {
-                                            side.sendMessage(Text.of(TextColors.GREEN, "Successfully removed " + NumberFormat.getNumberInstance(Locale.US).format(i) + " ", currency.getPluralDisplayName(), " from the trade."));
-                                            // Refreshes the total money and player money item
-                                            event.getTargetInventory().slots().forEach(s -> {
-                                                int index = s.getProperty(SlotIndex.class, "slotindex").get().getValue();
-                                                if (index == 22) {
-                                                    s.set(ItemUtils.Money.getTotalMoney(side));
-                                                }
-                                                else if (index == 26) {
-                                                    s.set(ItemUtils.Money.getPlayersMoney(side));
-                                                }
-                                            });
-                                            side.parentTrade.reformatInventory();
-                                        } else {
-                                            side.sendMessage(Text.of(TextColors.RED, "There was an error removing " + NumberFormat.getNumberInstance(Locale.US).format(i) + " ", currency.getPluralDisplayName(), " from the trade."));
-                                            side.sendMessage(Text.of(TextColors.RED, "Contact an administrator if this continues."));
-                                        }
-                                    }
-                                }
-
-                                break;
-                            }
-                        }
-                    }
-                });
-            });
-        });
-    }
-
-    public static void handlePCClick(Side side, ClickInventoryEvent event) {
-        LinkedHashMap<ItemStack, Pokemon>[] pcArr = Utils.generatePCMaps(side);
-        LinkedHashMap<ItemStack, Pokemon> partyMap = pcArr[0];
-        LinkedHashMap<ItemStack, Pokemon> pcMap = pcArr[1];
-        int page = currentPage.get(side);
-
-        event.setCancelled(true);
-        event.getCause().first(Player.class).ifPresent(player -> {
-            event.getTransactions().forEach(transaction -> {
-                transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
-                    ItemStack item = transaction.getOriginal().createStack();
-
-                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> side.changeInventoryForViewer(player, InventoryType.POKEMON)).delayTicks(1).submit(SafeTrade.getPlugin());
-                    }
-                    // If player is not the in the side of this vault, or the if the vault is locked, or they didn't left/right click, nothing will happen.
-                    // Checking for player is redundant when going through the main trade inventory, but I'll keep it here in-case a player somehow opens another side's pc inventory
-                    else if ((player.getUniqueId().equals(side.sideOwnerUUID) && !side.vault.isLocked() && event instanceof ClickInventoryEvent.Primary)
-                            && side.parentTrade.getState() == TradeState.TRADING) {
-                        boolean continueChecks = true;
-                        PlayerPartyStorage partyStorage = Pixelmon.storageManager.getParty(side.getUser().get().getUniqueId());
-                        PCStorage pcStorage = Pixelmon.storageManager.getPCForPlayer(side.getUser().get().getUniqueId());
-
-                        for (ItemStack itemStack : partyMap.keySet()) {
-                            if (itemStack.equalTo(item)) {
-                                Pokemon pokemon = partyMap.get(itemStack);
-
-                                if (PokemonSpec.from("untradeable").matches(pokemon) || partyStorage.countPokemon() <= 1) {
-                                    return;
-                                }
-                                if (Utils.getAllPokemon(partyStorage).contains(pokemon)) {
-                                    if (side.vault.addPokemon(pokemon)) {
-                                        partyStorage.set(partyStorage.getPosition(pokemon), null);
-                                        Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
-                                    }
-                                }
-                                continueChecks = false;
-                                break;
-                            }
-                        }
-                        for (ItemStack itemStack : pcMap.keySet()) {
-                            if (!continueChecks) {
-                                break;
-                            }
-                            if (itemStack.equalTo(item)) {
-                                Pokemon pokemon = pcMap.get(itemStack);
-                                if (PokemonSpec.from("untradeable").matches(pokemon)) {
-                                    return;
-                                }
-                                List<Pokemon> pcPokemon = Utils.getAllPokemon(pcStorage);
-                                if (pcPokemon.contains(pokemon)) {
-                                    if (side.vault.addPokemon(pokemon)) {
-                                        pcStorage.set(pcStorage.getPosition(pokemon), null);
-                                        Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
-                                    }
-                                }
-                                continueChecks = false;
-                                break;
-                            }
-                        }
-
-                        if (continueChecks) {
-                            if (item.equalTo(ItemUtils.PC.getNextPage(page))) {
-                                if (page*30 >= pcMap.size()) {
-                                    currentPage.put(side, 1);
-                                }
-                                else {
-                                    currentPage.put(side, page+1);
-                                }
-                                Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
-                            }
-                            else if (item.equalTo(ItemUtils.PC.getPreviousPage(page))) {
-                                if (page > 1) {
-                                    currentPage.put(side, page-1);
-                                }
-                                else {
-                                    int num = pcMap.size() / 30;
-                                    currentPage.put(side, num+1);
-                                }
-                                Sponge.getScheduler().createTaskBuilder().execute(() -> updatePC(event.getTargetInventory(), side)).delayTicks(1).submit(SafeTrade.getPlugin());
-                            }
-                        }
-                    }
-                });
-            });
-        });
-    }
-
-
-    /** Logs shit */
+    //
+    //  INVENTORIES
+    //
+    //  - Log (Main)
+    //
+    //
+    //  CLICKERS
+    //
+    //  - Log (Main)
+    //
 
     public static Inventory buildAndGetLogInventory(Log log) {
         User user = log.getParticipant();
@@ -622,16 +722,27 @@ public class InventoryHelper {
         });
     }
 
+    //
+    //  INVENTORIES
+    //
+    //  - Log (Items)
+    //
+    //
+    //  CLICKERS
+    //
+    //  - Log (Items)
+    //
+
     private static Inventory getLogItemsInventory(Log log, User user, List<ItemStackSnapshot> items) {
-        List<ItemStack> itemStacks = new ArrayList<>();
-        items.forEach(item -> itemStacks.add(item.createStack()));
-        itemStacks.forEach(item -> {
+        List<ItemStack> itemsForClicking = new ArrayList<>();
+        items.forEach(item -> itemsForClicking.add(item.createStack()));
+        itemsForClicking.forEach(item -> {
             List<Text> existingLore = item.get(Keys.ITEM_LORE).isPresent() ? item.get(Keys.ITEM_LORE).get() : new ArrayList<>();
             if (existingLore.size() != 0) {
                 existingLore.add(Text.of());
             }
-            existingLore.add(Text.of(TextColors.GREEN, "Left-click to put this item in your inventory or storage"));
-            existingLore.add(Text.of(TextColors.GOLD, "Right-click to put this item in the user's inventory or storage"));
+            existingLore.add(Text.of(TextColors.GREEN, "Left-click to put this item in your SafeTrade storage"));
+            existingLore.add(Text.of(TextColors.GOLD, "Right-click to put this item in the user's SafeTrade storage"));
             item.offer(Keys.ITEM_LORE, existingLore);
         });
 
@@ -639,10 +750,16 @@ public class InventoryHelper {
                 .property(InventoryTitle.PROPERTY_NAME, InventoryTitle.of(Text.of(TextColors.DARK_AQUA, user.getName() + "'s Traded Items")))
                 .property(InventoryDimension.PROPERTY_NAME, new InventoryDimension(9,6))
                 .of(InventoryArchetypes.MENU_GRID)
-                .listener(ClickInventoryEvent.class, event -> handleLogItemsClick(log, user, items, itemStacks, event))
+                .listener(ClickInventoryEvent.class, event -> handleLogItemsClick(log, user, items, itemsForClicking, event))
                 .build(SafeTrade.getPlugin());
 
-        Iterator<ItemStack> iter = itemStacks.iterator();
+        updateLogItemsInventory(inventory, itemsForClicking);
+
+        return inventory;
+    }
+
+    private static void updateLogItemsInventory(Inventory inventory, List<ItemStack> itemsForClicking) {
+        Iterator<ItemStack> iter = itemsForClicking.iterator();
 
         inventory.slots().forEach(slot -> {
             int i = slot.getProperty(SlotIndex.class, "slotindex").get().getValue();
@@ -651,7 +768,7 @@ public class InventoryHelper {
                 if (iter.hasNext()) {
                     slot.set(iter.next());
                 }
-        }
+            }
             else if (i == 45) {
                 slot.set(ItemUtils.Other.getBackButton());
             }
@@ -659,11 +776,9 @@ public class InventoryHelper {
                 slot.set(ItemUtils.Other.getFiller(DyeColors.GRAY));
             }
         });
-
-        return inventory;
     }
 
-    private static void handleLogItemsClick(Log log, User user, List<ItemStackSnapshot> actualItems, List<ItemStack> items, ClickInventoryEvent event) {
+    private static void handleLogItemsClick(Log log, User user, List<ItemStackSnapshot> actualItems, List<ItemStack> itemsForClicking, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
             event.getTransactions().forEach(transaction -> {
@@ -685,17 +800,15 @@ public class InventoryHelper {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
 
-                    for (ItemStack i : items) {
+                    for (ItemStack i : itemsForClicking) {
                         if (item.equalTo(i)) {
-                            ItemStackSnapshot snapshot = actualItems.get(items.indexOf(i));
+                            ItemStackSnapshot snapshot = actualItems.get(itemsForClicking.indexOf(i));
                             storage.addItem(snapshot);
-                            List<ItemStackSnapshot> itemsGiven = storage.giveItems();
-                            if (itemsGiven.size() > 0) {
-                                player.sendMessage(Text.of(TextColors.DARK_AQUA, "SafeTrade ", TextColors.GREEN, "has placed ", TextColors.DARK_AQUA, itemsGiven.size(), TextColors.GREEN, " items in to your inventory:"));
-                                for (ItemStackSnapshot givenSnapshot : itemsGiven) {
-                                    storage.getPlayer().get().sendMessage(Text.of(TextColors.GREEN, givenSnapshot.getQuantity() + "x ", TextColors.AQUA, givenSnapshot.getTranslation().get()));
-                                }
-                            }
+                            player.sendMessage(Text.of(TextColors.DARK_AQUA, "SafeTrade ", TextColors.GREEN, "has placed ",
+                                    TextColors.DARK_AQUA, snapshot.getQuantity(), " ", snapshot.getType().getTranslation().get(),
+                                    TextColors.GREEN, " in to " +
+                                            (storage.getUser().get().getUniqueId().equals(user.getUniqueId()) ? "your" : (user.getName() + "'s"))
+                                            + " SafeTrade storage."));
                             break;
                         }
                     }
@@ -703,6 +816,17 @@ public class InventoryHelper {
             });
         });
     }
+
+    //
+    //  INVENTORIES
+    //
+    //  - Log (Pokemon)
+    //
+    //
+    //  CLICKERS
+    //
+    //  - Log (Pokemon)
+    //
 
     private static Inventory getLogPokemonInventory(Log log, User user, List<Pokemon> pokemon) {
         List<ItemStack> pokemonItems = new ArrayList<>();
@@ -712,8 +836,8 @@ public class InventoryHelper {
             if (existingLore.size() != 0) {
                 existingLore.add(Text.of());
             }
-            existingLore.add(Text.of(TextColors.GREEN, "Left-click to put this pokemon in your party, pc, or storage"));
-            existingLore.add(Text.of(TextColors.GOLD, "Right-click to put this pokemon in the user's party, pc, or storage"));
+            existingLore.add(Text.of(TextColors.GREEN, "Left-click to put this pokemon in your SafeTrade storage"));
+            existingLore.add(Text.of(TextColors.GOLD, "Right-click to put this pokemon in the user's SafeTrade storage"));
             item.offer(Keys.ITEM_LORE, existingLore);
         });
 
@@ -724,6 +848,12 @@ public class InventoryHelper {
                 .listener(ClickInventoryEvent.class, event -> handleLogPokemonClick(log, user, pokemon, pokemonItems, event))
                 .build(SafeTrade.getPlugin());
 
+        updateLogPokemonInventory(inventory, pokemonItems);
+
+        return inventory;
+    }
+
+    private static void updateLogPokemonInventory(Inventory inventory, List<ItemStack> pokemonItems) {
         Iterator<ItemStack> iter = pokemonItems.iterator();
 
         inventory.slots().forEach(slot -> {
@@ -741,11 +871,7 @@ public class InventoryHelper {
                 slot.set(ItemUtils.Other.getFiller(DyeColors.GRAY));
             }
         });
-
-        return inventory;
     }
-
-    // TODO: MoneyWrapper log inventory & click handler
 
     private static void handleLogPokemonClick(Log log, User user, List<Pokemon> pokemon, List<ItemStack> pokemonItems, ClickInventoryEvent event) {
         event.setCancelled(true);
@@ -773,13 +899,11 @@ public class InventoryHelper {
                         if (item.equalTo(i)) {
                             Pokemon p = pokemon.get(pokemonItems.indexOf(i));
                             storage.addPokemon(p);
-                            List<Pokemon> pokemonGiven = storage.givePokemon();
-                            if (pokemonGiven.size() > 0) {
-                                player.sendMessage(Text.of(TextColors.DARK_AQUA, "SafeTrade ", TextColors.GREEN, "has placed ", TextColors.DARK_AQUA, pokemonGiven.size(), TextColors.GREEN, " Pokemon in to your PC:"));
-                                for (Pokemon givenPokemon : pokemonGiven) {
-                                    storage.getPlayer().get().sendMessage(Text.of(TextColors.GREEN, "- ", TextColors.AQUA, givenPokemon.getDisplayName()));
-                                }
-                            }
+                            player.sendMessage(Text.of(TextColors.DARK_AQUA, "SafeTrade ", TextColors.GREEN, "has placed ",
+                                    TextColors.DARK_AQUA, p.getDisplayName(),
+                                    TextColors.GREEN, " in to " +
+                                            (storage.getUser().get().getUniqueId().equals(user.getUniqueId()) ? "your" : (user.getName() + "'s"))
+                                            + " SafeTrade storage."));
                             break;
                         }
                     }
@@ -807,8 +931,8 @@ public class InventoryHelper {
             if (existingLore.size() != 0) {
                 existingLore.add(Text.of());
             }
-            existingLore.add(Text.of(TextColors.GREEN, "Left-click to put this item in your inventory or storage"));
-            existingLore.add(Text.of(TextColors.GOLD, "Right-click to put this item in the user's inventory or storage"));
+            existingLore.add(Text.of(TextColors.GREEN, "Left-click to put this item in your SafeTrade storage"));
+            existingLore.add(Text.of(TextColors.GOLD, "Right-click to put this item in the user's SafeTrade storage"));
             item.offer(Keys.ITEM_LORE, existingLore);
         });
 
@@ -819,7 +943,13 @@ public class InventoryHelper {
                 .listener(ClickInventoryEvent.class, event -> handleLogMoneyClick(log, user, moneyWrappers, itemStacks, event))
                 .build(SafeTrade.getPlugin());
 
-        Iterator<ItemStack> iter = itemStacks.iterator();
+        updateLogMoneyInventory(inventory, itemStacks);
+
+        return inventory;
+    }
+
+    private static void updateLogMoneyInventory(Inventory inventory, List<ItemStack> moneyItems) {
+        Iterator<ItemStack> iter = moneyItems.iterator();
 
         inventory.slots().forEach(slot -> {
             int i = slot.getProperty(SlotIndex.class, "slotindex").get().getValue();
@@ -834,8 +964,6 @@ public class InventoryHelper {
                 slot.set(ItemUtils.Other.getFiller(DyeColors.GRAY));
             }
         });
-
-        return inventory;
     }
 
     private static void handleLogMoneyClick(Log log, User user, List<MoneyWrapper> moneyWrappers, List<ItemStack> moneyWrapperItems, ClickInventoryEvent event) {
@@ -860,17 +988,15 @@ public class InventoryHelper {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
 
-                    for (ItemStack i : items) {
+                    for (ItemStack i : moneyWrapperItems) {
                         if (item.equalTo(i)) {
-                            ItemStackSnapshot snapshot = actualItems.get(items.indexOf(i));
-                            storage.addItem(snapshot);
-                            List<ItemStackSnapshot> itemsGiven = storage.giveItems();
-                            if (itemsGiven.size() > 0) {
-                                player.sendMessage(Text.of(TextColors.DARK_AQUA, "SafeTrade ", TextColors.GREEN, "has placed ", TextColors.DARK_AQUA, itemsGiven.size(), TextColors.GREEN, " items in to your inventory:"));
-                                for (ItemStackSnapshot givenSnapshot : itemsGiven) {
-                                    storage.getPlayer().get().sendMessage(Text.of(TextColors.GREEN, givenSnapshot.getQuantity() + "x ", TextColors.AQUA, givenSnapshot.getTranslation().get()));
-                                }
-                            }
+                            MoneyWrapper moneyWrapper = moneyWrappers.get(moneyWrapperItems.indexOf(i));
+                            storage.addMoney(moneyWrapper);
+                            player.sendMessage(Text.of(TextColors.DARK_AQUA, "SafeTrade ", TextColors.GREEN, "has placed ",
+                                    TextColors.DARK_AQUA, moneyWrapper.getCurrency().getSymbol(), NumberFormat.getNumberInstance(Locale.US).format(moneyWrapper.getBalance().intValue()),
+                                    TextColors.GREEN, " in to " +
+                                            (storage.getUser().get().getUniqueId().equals(user.getUniqueId()) ? "your" : (user.getName() + "'s"))
+                                            + " SafeTrade storage."));
                             break;
                         }
                     }
@@ -878,4 +1004,9 @@ public class InventoryHelper {
             });
         });
     }
+
+    /** {@link PlayerStorage} inventory shit */
+
+
+
 }
