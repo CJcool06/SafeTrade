@@ -10,7 +10,6 @@ import io.github.cjcool06.safetrade.api.events.trade.TradeCreationEvent;
 import io.github.cjcool06.safetrade.api.events.trade.TradeEvent;
 import io.github.cjcool06.safetrade.channels.TradeChannel;
 import io.github.cjcool06.safetrade.helpers.InventoryHelper;
-import io.github.cjcool06.safetrade.listeners.EvolutionListener;
 import io.github.cjcool06.safetrade.trackers.Tracker;
 import io.github.cjcool06.safetrade.utils.ItemUtils;
 import io.github.cjcool06.safetrade.utils.LogUtils;
@@ -149,18 +148,18 @@ public class Trade {
      *
      * <p>The players cannot cancel the trade.</p>
      */
-    public TradeResult executeTrade() {
+    public Result executeTrade() {
         if (SafeTrade.EVENT_BUS.post(new TradeEvent.Executing(this))) {
-            return TradeResult.CANCELLED;
+            return new Result(this, TradeResult.CANCELLED);
         }
 
-        TradeResult result = handleTrade();
+        Trade.Result result = handleTrade();
 
         LogUtils.logAndSave(this);
         Tracker.removeActiveTrade(this);
         setState(TradeState.ENDED);
 
-        SafeTrade.EVENT_BUS.post(new TradeEvent.Executed.Success(this, TradeResult.SUCCESS));
+        SafeTrade.EVENT_BUS.post(new TradeEvent.Executed.Success(result));
 
         return result;
     }
@@ -170,93 +169,59 @@ public class Trade {
      *
      * @return The result
      */
-    private TradeResult handleTrade() {
+    private Result handleTrade() {
         Side side0 = getSides()[0];
         Side side1 = getSides()[1];
-
         PlayerStorage storage0 = Tracker.getOrCreateStorage(side0.getUser().get());
         PlayerStorage storage1 = Tracker.getOrCreateStorage(side1.getUser().get());
 
-        boolean s0AutoGive = storage0.isAutoGiveEnabled();
-        boolean s1AutoGive = storage0.isAutoGiveEnabled();
+        // Handles possible evolutions
+        TradeEvolutionWrapper evolutionWrapper = new TradeEvolutionWrapper(this);
+        TradeEvolutionWrapper.Result evolutionResult = evolutionWrapper.doEvolutions();
 
-
-        // TODO
-
+        // Unloads storages to the opposite sides
         side1.vault.unloadToStorage(storage0);
         side0.vault.unloadToStorage(storage1);
-        // unloadToStorages();
 
-        // Traded Pokemon will NOT evolve if the player is offline.
-        // This is due to Pixelmon needing an EntityPixelmon to check evolution conditions.
-        side0.getPlayer().ifPresent(player -> {
-            storage0.giveItems();
-            storage0.giveMoney();
-            storage0.givePokemon().forEach(pokemon -> {
-                TradeEvolutionWrapper evoWrapper = new TradeEvolutionWrapper(this, side0);
-
-                evoWrapper.doEvolutions().forEach(p -> SafeTrade.sendMessage(player,
-                        Text.of(TextColors.GOLD, "Your ")));
-
-                if (evoWrapper.doEvolution(pokemon)) {
-                    SafeTrade.sendMessage(player, Text.of(TextColors.GOLD, "Attempting to evolve ", TextColors.LIGHT_PURPLE, pokemon.getSpecies().getLocalizedName()));
-                    EvolutionListener.ongoingEvolutions.add(pokemon.getUUID());
-                }
-            });
-            player.setMessageChannel(MessageChannel.TO_ALL);
-        });
-        side1.getPlayer().ifPresent(player -> {
-            storage1.giveItems();
-            storage1.giveMoney();
-            storage1.givePokemon().forEach(pokemon -> {
-                TradeEvolutionWrapper evoWrapper = new TradeEvolutionWrapper(this, player);
-
-                if (evoWrapper.doEvolution(pokemon)) {
-                    EvolutionListener.ongoingEvolutions.add(pokemon.getUUID());
-                    SafeTrade.sendMessage(player, Text.of(TextColors.GOLD, "Attempting to evolve ", TextColors.LIGHT_PURPLE, pokemon.getSpecies().getLocalizedName()));
-                }
-            });
-            player.setMessageChannel(MessageChannel.TO_ALL);
-        });
+        // Requires schedular as some calls come through Sponge's inventory events
+        // and will cause horrible errors (Phase Stack errors, yuck!).
         Sponge.getScheduler().createTaskBuilder().execute(() -> {
-            sides[0].getPlayer().ifPresent(Player::closeInventory);
-            sides[1].getPlayer().ifPresent(Player::closeInventory);
+            sides[0].getPlayer().ifPresent(player -> {
+                player.setMessageChannel(MessageChannel.TO_ALL);
+                player.closeInventory();
+            });
+            sides[1].getPlayer().ifPresent(player -> {
+                player.setMessageChannel(MessageChannel.TO_ALL);
+                player.closeInventory();
+            });
         }).delayTicks(1).submit(SafeTrade.getPlugin());
 
-        return TradeResult.SUCCESS;
+        return new Trade.Result(this, evolutionResult, TradeResult.SUCCESS);
     }
 
     /**
      * Forces the trade to close and return all items, money, and Pokemon that are being held by the trade.
      */
-    public TradeResult forceEnd() {
+    public void forceEnd() {
+        Tracker.removeActiveTrade(this);
         unloadToStorages();
         tradeChannel.clearMembers();
-        Tracker.removeActiveTrade(this);
 
-        sides[0].getPlayer().ifPresent(player -> {
-            PlayerStorage storage = Tracker.getOrCreateStorage(player);
-            storage.giveItems();
-            storage.givePokemon();
-            storage.giveMoney();
-            player.setMessageChannel(MessageChannel.TO_ALL);
-        });
-        sides[1].getPlayer().ifPresent(player -> {
-            PlayerStorage storage = Tracker.getOrCreateStorage(player);
-            storage.giveItems();
-            storage.givePokemon();
-            storage.giveMoney();
-            player.setMessageChannel(MessageChannel.TO_ALL);
-        });
+        // Requires schedular as some calls come through Sponge's inventory events
+        // and will cause horrible errors (Phase Stack errors, yuck!).
         Sponge.getScheduler().createTaskBuilder().execute(() -> {
-            sides[0].getPlayer().ifPresent(Player::closeInventory);
-            sides[1].getPlayer().ifPresent(Player::closeInventory);
+            sides[0].getPlayer().ifPresent(player -> {
+                player.setMessageChannel(MessageChannel.TO_ALL);
+                player.closeInventory();
+            });
+            sides[1].getPlayer().ifPresent(player -> {
+                player.setMessageChannel(MessageChannel.TO_ALL);
+                player.closeInventory();
+            });
         }).delayTicks(1).submit(SafeTrade.getPlugin());
 
-        SafeTrade.EVENT_BUS.post(new TradeEvent.Cancelled(this));
         setState(TradeState.ENDED);
-
-        return TradeResult.CANCELLED;
+        SafeTrade.EVENT_BUS.post(new TradeEvent.Cancelled(new Trade.Result(this, TradeResult.CANCELLED)));
     }
 
     /**
@@ -514,5 +479,27 @@ public class Trade {
                 slot.set(ItemUtils.Other.getFiller(DyeColors.BLACK));
             }
         });
+    }
+
+
+    /**
+     * The result of a {@link Trade}.
+     */
+    public class Result {
+        public final Trade trade;
+        public final TradeEvolutionWrapper.Result evolutionResult;
+        public final TradeResult tradeResult;
+
+        private Result(Trade trade, TradeResult tradeResult) {
+            this.trade = trade;
+            this.tradeResult = tradeResult;
+            this.evolutionResult = new TradeEvolutionWrapper(trade).DUMMY();
+        }
+
+        private Result(Trade trade, TradeEvolutionWrapper.Result evolutionResult, TradeResult tradeResult) {
+            this.trade = trade;
+            this.evolutionResult = evolutionResult;
+            this.tradeResult = tradeResult;
+        }
     }
 }
