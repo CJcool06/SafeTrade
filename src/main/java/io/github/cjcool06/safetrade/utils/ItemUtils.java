@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.TradeState;
 import io.github.cjcool06.safetrade.config.Config;
+import io.github.cjcool06.safetrade.obj.MoneyWrapper;
 import io.github.cjcool06.safetrade.obj.Side;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.key.Keys;
@@ -22,6 +23,8 @@ import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
 
 import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public class ItemUtils {
@@ -118,19 +121,44 @@ public class ItemUtils {
 
     public static class Money {
 
-        public static ItemStack getTotalMoney(Side side) {
-            Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
-            ItemStack item = ItemStack.of(ItemTypes.GOLD_BLOCK, 1);
-            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, currency.getSymbol(), side.vault.account.getBalance(currency).intValue()));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This money is safely stored until the trade comes to an end")));
+        public static ItemStack changeCurrency() {
+            ItemStack item = ItemStack.of(ItemTypes.IRON_BLOCK, 1);
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.LIGHT_PURPLE, "Change Currency"));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Add money of a different currency")));
             return item;
         }
 
-        public static ItemStack getPlayersMoney(Side side) {
-            Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
+        public static ItemStack getCurrency(Currency currency) {
+            ItemStack item = ItemStack.of(ItemTypes.IRON_INGOT, 1);
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, currency.getPluralDisplayName()));
+            return item;
+        }
+
+        public static ItemStack getMoney(MoneyWrapper wrapper) {
+            ItemStack item = ItemStack.of(ItemTypes.GOLD_INGOT, 1);
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, wrapper.getCurrency().getSymbol(), NumberFormat.getNumberInstance(Locale.US).format(wrapper.getBalance().intValue())));
+            return item;
+        }
+
+        public static ItemStack getTotalMoney(Side side) {
+            List<Text> lore = new ArrayList<>();
+            ItemStack item = ItemStack.of(ItemTypes.GOLD_BLOCK, 1);
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Money"));
+
+            for (MoneyWrapper wrapper : side.vault.getAllMoney()) {
+                lore.add(Text.of(
+                        TextColors.DARK_BLUE, "- ", TextColors.GREEN, wrapper.getCurrency().getSymbol(),
+                        NumberFormat.getNumberInstance(Locale.US).format(wrapper.getBalance().intValue())
+                ));
+            }
+            item.offer(Keys.ITEM_LORE, lore);
+            return item;
+        }
+
+        public static ItemStack getPlayersMoney(Side side, Currency currency) {
             ItemStack item = ItemStack.of(ItemTypes.DIAMOND_ORE, 1);
-            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GREEN, currency.getSymbol(), SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get().getBalance(currency).intValue()));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This is the total number of ", currency.getPluralDisplayName(), " you have")));
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Currency: ", TextColors.AQUA, currency.getPluralDisplayName()));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GOLD, "Your balance: ", TextColors.GREEN, NumberFormat.getNumberInstance(Locale.US).format(SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get().getBalance(currency).intValue()))));
             return item;
         }
 
@@ -244,11 +272,10 @@ public class ItemUtils {
     // Yeah yeah, I know this shit is kinda redundant
     public static class Logs {
 
-        public static ItemStack getMoney(User user, int money) {
-            Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
+        public static ItemStack getMoney(User user) {
             ItemStack item = ItemStack.of(ItemTypes.GOLD_BLOCK, 1);
-            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, currency.getSymbol(), money));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "The amount of ", currency.getPluralDisplayName(), " " + user.getName() + " traded")));
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Money"));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "The money " + user.getName() + " traded")));
             return item;
         }
 
