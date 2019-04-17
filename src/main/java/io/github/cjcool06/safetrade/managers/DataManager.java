@@ -36,7 +36,7 @@ public final class DataManager {
     public static final File logsDir = new File("config/safetrade/data/logs");
 
     /**
-     * Loads {@link PlayerStorage}s from files.
+     * Loads SafeTrade data from files.
      */
     public static void load() {
         dataDir.mkdirs();
@@ -86,7 +86,7 @@ public final class DataManager {
     }
 
     /**
-     * Saves all {@link PlayerStorage}s to files.
+     * Saves all relevant SafeTrade data to files.
      */
     public static void save() {
         // todo: Future support for trade persistence
