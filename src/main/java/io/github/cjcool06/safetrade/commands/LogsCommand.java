@@ -27,7 +27,7 @@ public class LogsCommand implements CommandExecutor {
     public static CommandSpec getSpec() {
         return CommandSpec.builder()
                 .description(Text.of("List player logs"))
-                .permission("safetrade.admin.logs")
+                .permission("safetrade.admin.logs.view")
                 .arguments(
                         GenericArguments.user(Text.of("target")),
                         GenericArguments.optional(GenericArguments.user(Text.of("target2"))))
@@ -60,13 +60,19 @@ public class LogsCommand implements CommandExecutor {
                 }
                 // Current logs
                 else {
-                    contents.add(Text.builder().append(Text.builder().append(Text.of(TextColors.RED, "[", TextColors.DARK_RED, "-", TextColors.RED, "] "))
-                            .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click to delete log")))
-                            .onClick(TextActions.executeCallback(dummySrc -> {
-                                DataManager.removeLog(target, log);
-                                showLogs(src, target, target2);
-                            })).build())
-                            .append(log.getDisplayText()).build());
+                    // If the player has the permission "safetrade.admin.logs.delete",
+                    // they will be able to delete logs.
+                    contents.add(
+                            Text.builder().append(
+                                src.hasPermission("safetrade.admin.logs.delete") ?
+                                Text.builder().append(Text.of(TextColors.RED, "[", TextColors.DARK_RED, "-", TextColors.RED, "] "))
+                                .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click to delete log")))
+                                .onClick(TextActions.executeCallback(dummySrc -> {
+                                    DataManager.removeLog(target, log);
+                                    showLogs(src, target, target2);
+                                })).build()
+                                : Text.of()
+                            ).append(log.getDisplayText()).build());
                 }
             }
             List<Text> reverseContents = Lists.reverse(contents);
