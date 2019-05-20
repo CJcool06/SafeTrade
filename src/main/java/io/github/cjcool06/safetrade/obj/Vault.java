@@ -315,6 +315,7 @@ public class Vault {
         for (int i = 0; i <= 100; i++) {
             Optional<Account> optAcc = SafeTrade.getEcoService().getOrCreateAccount(UUID.randomUUID().toString());
             if (optAcc.isPresent()) {
+                optAcc.get().resetBalances(Cause.of(EventContext.empty(), this));
                 return optAcc.get();
             }
         }
