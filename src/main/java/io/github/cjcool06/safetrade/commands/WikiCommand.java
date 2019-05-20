@@ -1,5 +1,7 @@
 package io.github.cjcool06.safetrade.commands;
 
+import io.github.cjcool06.safetrade.SafeTrade;
+import io.github.cjcool06.safetrade.api.enums.PrefixType;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.args.CommandContext;
@@ -26,9 +28,9 @@ public class WikiCommand implements CommandExecutor {
     public CommandResult execute(CommandSource src, CommandContext args) {
 
         try {
-            src.sendMessage(Text.builder().append(Text.of(TextColors.GOLD, TextStyles.BOLD, "Click me for wiki")).onClick(TextActions.openUrl(new URL("https://github.com/CJcool06/SafeTrade/wiki"))).build());
+            SafeTrade.sendMessageToCommandSource(src, PrefixType.SAFETRADE, Text.builder().append(Text.of(TextColors.GOLD, TextStyles.BOLD, "Click me for wiki")).onClick(TextActions.openUrl(new URL("https://github.com/CJcool06/SafeTrade/wiki"))).build());
         } catch (MalformedURLException me) {
-            src.sendMessage(Text.of(TextColors.RED, "A problem has occurred, please report this to an administrator."));
+            SafeTrade.sendMessageToCommandSource(src, PrefixType.SAFETRADE, Text.of(TextColors.RED, "A problem has occurred, please report this to an administrator."));
         }
 
         return CommandResult.success();

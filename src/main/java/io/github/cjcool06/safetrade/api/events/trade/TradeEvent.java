@@ -26,7 +26,7 @@ public class TradeEvent extends Event {
         public final Trade.Result tradeResult;
 
         private Executed(Trade.Result tradeResult) {
-            super(tradeResult.trade);
+            super(tradeResult.getTrade());
             this.tradeResult = tradeResult;
         }
 
@@ -56,7 +56,7 @@ public class TradeEvent extends Event {
         public final Trade.Result tradeResult;
 
         public Cancelled(Trade.Result tradeResult) {
-            super(tradeResult.trade);
+            super(tradeResult.getTrade());
             this.tradeResult = tradeResult;
         }
     }

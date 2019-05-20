@@ -340,7 +340,7 @@ public class TradeEvolutionWrapper {
     /**
      * Creates a dummy {@link Result}.
      *
-     * This dummy has an initialised state, but empty.
+     * This dummy has an initialised state, but is empty.
      *
      * @return The dummy result
      */

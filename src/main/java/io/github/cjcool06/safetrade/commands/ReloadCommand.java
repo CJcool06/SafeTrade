@@ -1,5 +1,7 @@
 package io.github.cjcool06.safetrade.commands;
 
+import io.github.cjcool06.safetrade.SafeTrade;
+import io.github.cjcool06.safetrade.api.enums.PrefixType;
 import io.github.cjcool06.safetrade.config.Config;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
@@ -20,9 +22,8 @@ public class ReloadCommand implements CommandExecutor {
     }
 
     public CommandResult execute(CommandSource src, CommandContext args) {
-        src.sendMessage(Text.of(TextColors.GRAY, "Reloading config..."));
         Config.load();
-        src.sendMessage(Text.of(TextColors.GRAY, "Config reloaded."));
+        SafeTrade.sendMessageToCommandSource(src, PrefixType.CONFIG, Text.of(TextColors.GRAY, "Config reloaded."));
 
         return CommandResult.success();
     }

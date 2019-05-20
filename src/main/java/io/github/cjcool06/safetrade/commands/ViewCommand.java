@@ -1,5 +1,7 @@
 package io.github.cjcool06.safetrade.commands;
 
+import io.github.cjcool06.safetrade.SafeTrade;
+import io.github.cjcool06.safetrade.api.enums.PrefixType;
 import io.github.cjcool06.safetrade.obj.Trade;
 import io.github.cjcool06.safetrade.trackers.Tracker;
 import org.spongepowered.api.command.CommandResult;
@@ -25,15 +27,19 @@ public class ViewCommand implements CommandExecutor {
     }
 
     public CommandResult execute(CommandSource src, CommandContext args) {
-        Player player = (Player)src;
-        User user = args.<User>getOne("target").get();
-        Trade trade = Tracker.getActiveTrade(user);
+        if (src instanceof Player) {
+            User user = args.<User>getOne("target").get();
+            Trade trade = Tracker.getActiveTrade(user);
 
-        if (trade != null) {
-            trade.addViewer(player, true);
+            if (trade != null) {
+                trade.addViewer((Player)src, true);
+                SafeTrade.sendMessageToPlayer((Player)src, PrefixType.SAFETRADE, Text.of(TextColors.GREEN, "Opening trade between ", TextColors.GOLD, trade.getSides()[0].getUser().get().getName(), TextColors.GREEN, " & ", TextColors.GOLD, trade.getSides()[1].getUser().get().getName(), TextColors.GREEN, "."));
+            } else {
+                SafeTrade.sendMessageToPlayer((Player)src, PrefixType.SAFETRADE, Text.of(TextColors.GOLD, user.getName(), TextColors.RED, " is not currently participating in a SafeTrade."));
+            }
         }
         else {
-            player.sendMessage(Text.of(TextColors.RED, user.getName() + " is not currently participating in a SafeTrade."));
+            SafeTrade.sendMessageToCommandSource(src, PrefixType.SAFETRADE, Text.of(TextColors.RED, "You must be a player to do that."));
         }
 
         return CommandResult.success();

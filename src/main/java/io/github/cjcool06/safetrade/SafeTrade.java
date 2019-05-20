@@ -2,6 +2,7 @@ package io.github.cjcool06.safetrade;
 
 import com.google.inject.Inject;
 import com.pixelmonmod.pixelmon.Pixelmon;
+import io.github.cjcool06.safetrade.api.enums.PrefixType;
 import io.github.cjcool06.safetrade.commands.TradeCommand;
 import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.listeners.*;
@@ -12,6 +13,7 @@ import net.minecraftforge.fml.common.eventhandler.EventBus;
 import ninja.leaping.configurate.objectmapping.GuiceObjectMapperFactory;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
+import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.config.ConfigDir;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.event.Listener;
@@ -27,8 +29,6 @@ import org.spongepowered.api.plugin.PluginContainer;
 import org.spongepowered.api.service.economy.EconomyService;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.channel.MessageChannel;
-import org.spongepowered.api.text.format.TextColors;
-import org.spongepowered.api.text.format.TextStyles;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
@@ -48,7 +48,6 @@ public class SafeTrade {
     public static final String AUTHORS = "CJcool06";
 
     public static final EventBus EVENT_BUS = new EventBus();
-    public static final Text prefix = Text.of(TextColors.GREEN, TextStyles.BOLD, "SafeTrade ", TextColors.GOLD, ">> ");
 
     private static SafeTrade plugin;
     private EconomyService economyService = null;
@@ -80,7 +79,7 @@ public class SafeTrade {
         EVENT_BUS.register(new TradeConnectionListener());
         logger.info("Listeners registered.");
 
-        Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade");
+        Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade", "strade", "st");
         logger.info("Commands registered.");
 
         Sponge.getServiceManager()
@@ -128,7 +127,6 @@ public class SafeTrade {
 
     @Listener
     public void onReload(GameReloadEvent event) {
-        logger.info("Reloading config...");
         Config.load();
         logger.info("Config reloaded.");
     }
@@ -140,27 +138,72 @@ public class SafeTrade {
         }
     }
 
+    /**
+     * Gets sponge's current {@link EconomyService}.
+     *
+     * @return The service
+     */
     public static EconomyService getEcoService() {
         return getPlugin().economyService;
     }
 
+    /**
+     * Gets the instance of this plugin.
+     *
+     * @return The instance
+     */
     public static SafeTrade getPlugin() {
         return plugin;
     }
 
+    /**
+     * Gets the {@link Logger} of this plugin.
+     *
+     * @return The logger
+     */
     public static Logger getLogger() {
         return plugin.logger;
     }
 
+    /**
+     * Gets the {@link GuiceObjectMapperFactory} of this plugin.
+     *
+     * @return The factory
+     */
     public static GuiceObjectMapperFactory getFactory() {
         return plugin.factory;
     }
 
-    public static void sendMessage(Player player, Text text) {
-        player.sendMessage(Text.of(prefix, text));
+    /**
+     * Sends a {@link Text} message to a {@link Player} adhering to SafeTrade's chat style.
+     *
+     * @param player The player to send to
+     * @param prefixType The type of prefix to send the text with
+     * @param text The message
+     */
+    public static void sendMessageToPlayer(Player player, PrefixType prefixType, Text text) {
+        player.sendMessage(Text.of(prefixType.getPrefix(), text));
     }
 
-    public static void broadcast(Text text) {
-        MessageChannel.TO_ALL.send(Text.of(prefix, text));
+    /**
+     * Sends a {@link Text} message to a {@link Player} adhering to SafeTrade's chat style.
+     *
+     * <p>If the {@link CommandSource} is not a player, a prefix will not be sent.</p>
+     *
+     * @param src The source to send to
+     * @param prefixType The type of prefix to send the text with
+     * @param text The message
+     */
+    public static void sendMessageToCommandSource(CommandSource src, PrefixType prefixType, Text text) {
+        if (src instanceof Player) {
+            sendMessageToPlayer((Player)src, prefixType, text);
+        }
+        else {
+            src.sendMessage(text);
+        }
+    }
+
+    public static void sendMessageToAll(PrefixType prefixType, Text text) {
+        MessageChannel.TO_ALL.send(Text.of(prefixType.getPrefix(), text));
     }
 }

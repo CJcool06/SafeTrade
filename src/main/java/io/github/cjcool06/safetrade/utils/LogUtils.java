@@ -24,10 +24,23 @@ import java.util.List;
 public class LogUtils {
 
     /**
+     * Saves the {@link Log} of a {@link Trade} to the participants' log files.
+     *
+     * @param log The trade log
+     */
+    public static void saveLog(Log log) {
+        Sponge.getScheduler().createTaskBuilder().execute(() -> {
+            DataManager.addLog(log.getParticipant(), log);
+            DataManager.addLog(log.getOtherParticipant(), log);
+        }).async().submit(SafeTrade.getPlugin());
+    }
+
+    /**
      * Creates and saves the {@link Log} of a {@link Trade} to the participants' log files.
      *
      * @param trade The trade
      */
+    @Deprecated
     public static void logAndSave(Trade trade) {
         Log log = new Log(trade);
         Sponge.getScheduler().createTaskBuilder().execute(() -> {

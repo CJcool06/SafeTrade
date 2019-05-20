@@ -9,19 +9,18 @@ import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
 import com.pixelmonmod.pixelmon.storage.PlayerPartyStorage;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.CommandType;
+import io.github.cjcool06.safetrade.helpers.InventoryHelper;
 import io.github.cjcool06.safetrade.managers.DataManager;
 import io.github.cjcool06.safetrade.utils.GsonUtils;
+import io.github.cjcool06.safetrade.utils.Utils;
 import net.minecraft.nbt.NBTTagCompound;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.persistence.DataFormats;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
 import org.spongepowered.api.item.inventory.Inventory;
-import org.spongepowered.api.item.inventory.InventoryTransformations;
 import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.item.inventory.ItemStackSnapshot;
-import org.spongepowered.api.item.inventory.entity.PlayerInventory;
-import org.spongepowered.api.item.inventory.transaction.InventoryTransactionResult;
 import org.spongepowered.api.service.economy.transaction.ResultType;
 import org.spongepowered.api.service.economy.transaction.TransactionResult;
 import org.spongepowered.api.service.user.UserStorageService;
@@ -32,30 +31,45 @@ import java.util.*;
 // TODO: Make PlayerStorage GUI that admins can edit
 
 /**
- * A PlayerStorage represents a storage for a {@link User} that holds {@link ItemStackSnapshot}s, {@link Pokemon}, and {@link CommandWrapper}s.
+ * A PlayerStorage represents a storage for a {@link User} that holds
+ * {@link ItemStackSnapshot}s,
+ * {@link Pokemon},
+ * {@link CommandWrapper}s,
+ * and {@link MoneyWrapper}s,
+ * as well as some other smaller stuff.
  *
  * <p>PlayerStorage data persists across restarts.</p>
  */
 public class PlayerStorage {
-    public final UUID playerUUID;
-
+    private final UUID playerUUID;
     private final List<ItemStackSnapshot> items = new ArrayList<>();
     private final List<Pokemon> pokemons = new ArrayList<>();
     private final List<CommandWrapper> commands = new ArrayList<>();
     private final List<MoneyWrapper> money = new ArrayList<>();
 
     private boolean needSaving = false;
+    private boolean autoGive = true;
 
     public PlayerStorage(User user) {
         this.playerUUID = user.getUniqueId();
     }
 
-    private PlayerStorage(UUID uuid, List<ItemStackSnapshot> items, List<Pokemon> pokemons, List<CommandWrapper> commands, List<MoneyWrapper> money) {
+    private PlayerStorage(UUID uuid, boolean autoGive, List<ItemStackSnapshot> items, List<Pokemon> pokemons, List<CommandWrapper> commands, List<MoneyWrapper> money) {
         this.playerUUID = uuid;
+        this.autoGive = autoGive;
         this.items.addAll(items);
         this.pokemons.addAll(pokemons);
         this.commands.addAll(commands);
         this.money.addAll(money);
+    }
+
+    /**
+     * Gets the {@link UUID} associated with the owner of the storage.
+     *
+     * @return The uuid
+     */
+    public UUID getPlayerUUID() {
+        return playerUUID;
     }
 
     /**
@@ -76,8 +90,31 @@ public class PlayerStorage {
         return Sponge.getServiceManager().provide(UserStorageService.class).get().get(playerUUID);
     }
 
+    /**
+     * Gets whether the storage needs saving.
+     *
+     * @return True if needs saving
+     */
     public boolean needSaving() {
         return needSaving;
+    }
+
+    /**
+     * Gets whether auto give is enabled for this storage.
+     *
+     * @return True if enabled
+     */
+    public boolean isAutoGiveEnabled() {
+        return autoGive;
+    }
+
+    /**
+     * Sets whether auto give is enabled for this storage.
+     *
+     * @param autoGive True for enable, false for disable
+     */
+    public void setAutoGive(boolean autoGive) {
+        this.autoGive = autoGive;
     }
 
     /**
@@ -93,22 +130,36 @@ public class PlayerStorage {
      * Adds a {@link MoneyWrapper} to this storage.
      *
      * @param moneyWrapper The money wrapper
-     * @return True if successfully added
      */
-    public boolean addMoney(MoneyWrapper moneyWrapper) {
+    public void addMoney(MoneyWrapper moneyWrapper) {
+        money.add(moneyWrapper);
+        if (autoGive) {
+            giveMoney();
+        }
         needSaving = true;
-        return money.add(moneyWrapper);
+    }
+
+    /**
+     * Adds {@link MoneyWrapper}s to this storage.
+     *
+     * @param moneyWrapper The money wrapper
+     */
+    public void addMoney(List<MoneyWrapper> moneyWrapper) {
+        money.addAll(moneyWrapper);
+        if (autoGive) {
+            giveMoney();
+        }
+        needSaving = true;
     }
 
     /**
      * Removes a {@link MoneyWrapper} from this storage.
      *
      * @param moneyWrapper The money wrapper
-     * @return True if successfully removed
      */
-    public boolean removeMoney(MoneyWrapper moneyWrapper) {
+    public void removeMoney(MoneyWrapper moneyWrapper) {
         needSaving = true;
-        return money.remove(moneyWrapper);
+        money.remove(moneyWrapper);
     }
 
     /**
@@ -138,6 +189,7 @@ public class PlayerStorage {
             if (result.getResult() == ResultType.SUCCESS) {
                 successes.add(wrapper);
                 iter.remove();
+                needSaving = true;
             }
         }
 
@@ -157,41 +209,52 @@ public class PlayerStorage {
      * Adds an {@link ItemStackSnapshot} to this storage.
      *
      * @param snapshot The item
-     * @return True if successfully added
      */
-    public boolean addItem(ItemStackSnapshot snapshot) {
+    public void addItem(ItemStackSnapshot snapshot) {
+        items.add(snapshot);
+        if (autoGive) {
+            giveItems();
+        }
         needSaving = true;
-        return items.add(snapshot);
+    }
+
+    /**
+     * Adds {@link ItemStackSnapshot}s to this storage.
+     *
+     * @param snapshot The items
+     */
+    public void addItems(List<ItemStackSnapshot> snapshot) {
+        items.addAll(snapshot);
+        if (autoGive) {
+            giveItems();
+        }
+        needSaving = true;
     }
 
     /**
      * Removes an {@link ItemStackSnapshot} from this storage.
      *
      * @param snapshot The item
-     * @return True if successfully removed
      */
-    public boolean removeItem(ItemStackSnapshot snapshot) {
+    public void removeItem(ItemStackSnapshot snapshot) {
         needSaving = true;
-        return items.remove(snapshot);
+        items.remove(snapshot);
     }
 
     /**
      * Removes an {@link ItemStack} from this storage.
      *
      * @param itemStack The item
-     * @return True if successfully removed
      */
-    public boolean removeItem(ItemStack itemStack) {
+    public void removeItem(ItemStack itemStack) {
         Iterator<ItemStackSnapshot> iter = items.iterator();
         while (iter.hasNext()) {
             ItemStack item = iter.next().createStack();
             if (item.equalTo(itemStack)) {
                 iter.remove();
                 needSaving = true;
-                return true;
             }
         }
-        return false;
     }
 
     /**
@@ -219,11 +282,8 @@ public class PlayerStorage {
 
         while (iter.hasNext()) {
             ItemStackSnapshot snapshot = iter.next();
-            Player player = getPlayer().get();
-            PlayerInventory inv = (PlayerInventory)player.getInventory();
-            Inventory prioritisedInv = inv.getMain().transform(InventoryTransformations.PLAYER_MAIN_HOTBAR_FIRST);
 
-            if (prioritisedInv.offer(snapshot.createStack()).getType() == InventoryTransactionResult.Type.SUCCESS) {
+            if (Utils.giveItem(getPlayer().get(), snapshot)) {
                 successes.add(snapshot);
                 iter.remove();
                 needSaving = true;
@@ -250,22 +310,36 @@ public class PlayerStorage {
      * Adds a {@link Pokemon} to this storage.
      *
      * @param pokemon The pokemon
-     * @return True if successfully added
      */
-    public boolean addPokemon(Pokemon pokemon) {
+    public void addPokemon(Pokemon pokemon) {
+        pokemons.add(pokemon);
+        if (autoGive) {
+            givePokemon();
+        }
         needSaving = true;
-        return pokemons.add(pokemon);
+    }
+
+    /**
+     * Adds {@link Pokemon} to this storage.
+     *
+     * @param pokemon The pokemon
+     */
+    public void addPokemon(List<Pokemon> pokemon) {
+        pokemons.addAll(pokemon);
+        if (autoGive) {
+            givePokemon();
+        }
+        needSaving = true;
     }
 
     /**
      * Removes a {@link Pokemon} from this storage.
      *
      * @param pokemon The pokemon
-     * @return True if successfully removed
      */
-    public boolean removePokemon(Pokemon pokemon) {
+    public void removePokemon(Pokemon pokemon) {
         needSaving = true;
-        return pokemons.remove(pokemon);
+        pokemons.remove(pokemon);
     }
 
     /**
@@ -286,11 +360,12 @@ public class PlayerStorage {
      */
     public List<Pokemon> givePokemon() {
         List<Pokemon> successes = new ArrayList<>();
-        PlayerPartyStorage partyStorage = Pixelmon.storageManager.getParty(playerUUID);
         Iterator<Pokemon> iter = pokemons.iterator();
+        PlayerPartyStorage partyStorage = Pixelmon.storageManager.getParty(playerUUID);
 
         while (iter.hasNext()) {
             Pokemon pokemon = iter.next();
+
             if (partyStorage.add(pokemon)) {
                 successes.add(pokemon);
                 iter.remove();
@@ -318,22 +393,36 @@ public class PlayerStorage {
      * Adds a {@link CommandWrapper} to this storage.
      *
      * @param commandWrapper The command wrapper
-     * @return True if successfully added
      */
-    public boolean addCommand(CommandWrapper commandWrapper) {
+    public void addCommand(CommandWrapper commandWrapper) {
+        commands.add(commandWrapper);
+        if (autoGive) {
+            executeCommands();
+        }
         needSaving = true;
-        return commands.add(commandWrapper);
+    }
+
+    /**
+     * Adds {@link CommandWrapper}s to this storage.
+     *
+     * @param commandWrapper The command wrapper
+     */
+    public void addCommands(List<CommandWrapper> commandWrapper) {
+        commands.addAll(commandWrapper);
+        if (autoGive) {
+            executeCommands();
+        }
+        needSaving = true;
     }
 
     /**
      * Removes a {@link CommandWrapper} from this storage.
      *
      * @param commandWrapper The command wrapper
-     * @return True if successfully removed
      */
-    public boolean removeCommand(CommandWrapper commandWrapper) {
+    public void removeCommand(CommandWrapper commandWrapper) {
         needSaving = true;
-        return commands.remove(commandWrapper);
+        commands.remove(commandWrapper);
     }
 
     /**
@@ -385,11 +474,39 @@ public class PlayerStorage {
     }
 
     /**
+     * Opens the {@link Inventory} representation of this storage.
+     *
+     * @param player The player to open the inventory for
+     */
+    public void open(Player player) {
+        player.openInventory(getInventory());
+    }
+
+    /**
+     * Gets an {@link Inventory} view of this storage.
+     *
+     * @return The inventory
+     */
+    public Inventory getInventory() {
+        return InventoryHelper.buildAndGetStorageInventory(this);
+    }
+
+    /**
      * Save the storage to file.
      */
     public void save() {
         DataManager.savePlayerStorage(this);
         needSaving = false;
+    }
+
+    /**
+     * Clears the entire storage.
+     */
+    public void clearAll() {
+        clearCommands();
+        clearItems();
+        clearMoney();
+        clearPokemon();
     }
 
     /**
@@ -428,6 +545,7 @@ public class PlayerStorage {
         }
 
         jsonObject.add("PlayerUUID", new JsonPrimitive(playerUUID.toString()));
+        jsonObject.add("AutoGive", new JsonPrimitive(autoGive));
         jsonObject.add("Money", moneyArr);
         jsonObject.add("Commands", commandsArr);
         jsonObject.add("Pokemon", pokemonsArr);
@@ -443,6 +561,7 @@ public class PlayerStorage {
     public static PlayerStorage fromContainer(JsonObject jsonObject) {
         try {
             UUID playerUUID = UUID.fromString(jsonObject.get("PlayerUUID").getAsString());
+            boolean autoGive = jsonObject.get("AutoGive").getAsBoolean();
 
             List<ItemStackSnapshot> items = new ArrayList<>();
             List<Pokemon> pokemons = new ArrayList<>();
@@ -471,7 +590,7 @@ public class PlayerStorage {
                 items.add(Sponge.getDataManager().deserialize(ItemStackSnapshot.class, DataFormats.JSON.read(element.getAsString())).get());
             }
 
-            return new PlayerStorage(playerUUID, items, pokemons, commands, money);
+            return new PlayerStorage(playerUUID, autoGive, items, pokemons, commands, money);
         } catch (Exception e) {
             SafeTrade.getLogger().warn("There was a problem deserialising a PlayerStorage from a container.");
             e.printStackTrace();

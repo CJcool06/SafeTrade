@@ -97,30 +97,30 @@ public final class Tracker {
      * @return A storage
      */
     public static PlayerStorage getOrCreateStorage(User user) {
-        for (PlayerStorage storage : storageCache) {
-            if (storage.playerUUID.equals(user.getUniqueId())) {
-                return storage;
-            }
+
+        PlayerStorage storage = getStorage(user);
+        if (storage != null) {
+            return storage;
         }
-        PlayerStorage storage = new PlayerStorage(user);
+        storage = new PlayerStorage(user);
         storageCache.add(storage);
 
         return storage;
     }
 
     /**
-     * Gets whether the {@link User} has a {@link PlayerStorage} cached.
+     * Gets a {@link User}'s {@link PlayerStorage}.
      *
      * @param user The user
-     * @return True if storage is present
+     * @return The storage, if present
      */
-    public static boolean hasStorage(User user) {
+    public static PlayerStorage getStorage(User user) {
         for (PlayerStorage storage : storageCache) {
-            if (storage.playerUUID.equals(user.getUniqueId())) {
-                return true;
+            if (storage.getPlayerUUID().equals(user.getUniqueId())) {
+                return storage;
             }
         }
-        return false;
+        return null;
     }
 
     /**

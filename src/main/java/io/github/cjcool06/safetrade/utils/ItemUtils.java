@@ -5,6 +5,7 @@ import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.TradeState;
 import io.github.cjcool06.safetrade.config.Config;
 import io.github.cjcool06.safetrade.obj.MoneyWrapper;
+import io.github.cjcool06.safetrade.obj.PlayerStorage;
 import io.github.cjcool06.safetrade.obj.Side;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.key.Keys;
@@ -304,6 +305,51 @@ public class ItemUtils {
             itemStack.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "This side of the trade holds the Items, Money, and Pokemon that " +
                     user.getName() + " traded")));
             return itemStack;
+        }
+    }
+
+    public static class Storage {
+
+        public static ItemStack getMoney(PlayerStorage storage) {
+            ItemStack item = ItemStack.of(ItemTypes.CHEST, 1);
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Money"));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, storage.getUser().get().getName() + "'s stored money.")));
+            return item;
+        }
+
+        public static ItemStack getItems(PlayerStorage storage) {
+            ItemStack item = ItemStack.of(ItemTypes.CHEST, 1);
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Items"));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, storage.getUser().get().getName() + "'s stored items.")));
+            return item;
+        }
+
+        public static ItemStack getPokemon(PlayerStorage storage) {
+            ItemStack item = ItemStack.of(ItemTypes.CHEST, 1);
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Pokemon"));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, storage.getUser().get().getName() + "'s stored Pokemon.")));
+            return item;
+        }
+
+        public static ItemStack getHead(PlayerStorage storage) {
+            SkullData skullData = Sponge.getDataManager().getManipulatorBuilder(SkullData.class).get().create();
+            skullData.set(Keys.SKULL_TYPE, SkullTypes.PLAYER);
+            ItemStack itemStack = Sponge.getRegistry().createBuilder(ItemStack.Builder.class).itemType(ItemTypes.SKULL).itemData(skullData).build();
+            RepresentedPlayerData skinData = Sponge.getDataManager().getManipulatorBuilder(RepresentedPlayerData.class).get().create();
+            skinData.set(Keys.REPRESENTED_PLAYER, GameProfile.of(storage.getPlayerUUID()));
+            itemStack.offer(skinData);
+            itemStack.offer(Keys.DISPLAY_NAME, Text.of(TextColors.DARK_AQUA, storage.getUser().get().getName()));
+            return itemStack;
+        }
+
+        public static ItemStack getAutoClaim(PlayerStorage storage) {
+            ItemStack item = ItemStack.of(ItemTypes.DYE, 1);
+            item.offer(Keys.DYE_COLOR, storage.isAutoGiveEnabled() ? DyeColors.LIME : DyeColors.RED);
+            item.offer(Keys.DISPLAY_NAME, Text.of(storage.isAutoGiveEnabled() ? TextColors.GREEN : TextColors.RED, "AutoClaim"));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY,
+                    "SafeTrade will automatically claim anything in or added to your storage."
+            )));
+            return item;
         }
     }
 

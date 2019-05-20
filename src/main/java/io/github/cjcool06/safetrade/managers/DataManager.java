@@ -111,14 +111,14 @@ public final class DataManager {
         storage.toContainer(storageObject);
 
         try {
-            File file = new File(storageDir, storage.playerUUID + ".json");
+            File file = new File(storageDir, storage.getPlayerUUID() + ".json");
             PrintWriter pw = new PrintWriter(file);
             String objString = new GsonBuilder().setPrettyPrinting().create().toJson(storageObject);
             pw.print(objString);
             pw.flush();
             pw.close();
         } catch (Exception e) {
-            SafeTrade.getLogger().warn("Error saving the PlayerStorage of a player:  UUID=" + storage.playerUUID.toString());
+            SafeTrade.getLogger().warn("Error saving the PlayerStorage of a player:  UUID=" + storage.getPlayerUUID().toString());
             e.printStackTrace();
         }
     }
@@ -148,7 +148,7 @@ public final class DataManager {
      * @param storage The storage
      */
     public static void deletePlayerStorageFile(PlayerStorage storage) {
-        new File(storageDir, storage.playerUUID + ".json").delete();
+        new File(storageDir, storage.getPlayerUUID() + ".json").delete();
     }
 
     // todo: Future support for trade persistence

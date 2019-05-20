@@ -2,6 +2,7 @@ package io.github.cjcool06.safetrade.obj;
 
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.InventoryType;
+import io.github.cjcool06.safetrade.api.enums.PrefixType;
 import io.github.cjcool06.safetrade.api.enums.TradeResult;
 import io.github.cjcool06.safetrade.api.enums.TradeState;
 import io.github.cjcool06.safetrade.api.events.trade.ConnectionEvent;
@@ -144,9 +145,7 @@ public class Trade {
     }
 
     /**
-     * Immediately executes the trade.
-     *
-     * <p>The players cannot cancel the trade.</p>
+     * Executes the trade.
      */
     public Result executeTrade() {
         if (SafeTrade.EVENT_BUS.post(new TradeEvent.Executing(this))) {
@@ -155,9 +154,9 @@ public class Trade {
 
         Trade.Result result = handleTrade();
 
-        LogUtils.logAndSave(this);
         Tracker.removeActiveTrade(this);
         setState(TradeState.ENDED);
+        LogUtils.saveLog(result.tradeLog);
 
         SafeTrade.EVENT_BUS.post(new TradeEvent.Executed.Success(result));
 
@@ -301,7 +300,7 @@ public class Trade {
      */
     public void sendMessage(Text text) {
         for (Side side : getSides()) {
-            side.getPlayer().ifPresent(player -> player.sendMessage(text));
+            side.getPlayer().ifPresent(player -> SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, text));
         }
     }
 
@@ -314,6 +313,11 @@ public class Trade {
         tradeChannel.send(text);
     }
 
+    /**
+     * Handles the inventory click of InventoryType MAIN.
+     *
+     * @param event The click event
+     */
     private void handleClick(ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
@@ -327,6 +331,7 @@ public class Trade {
                 Optional<Side> optSide = getSide(player.getUniqueId());
                 clickingMainInv.add(player.getUniqueId());
                 // Needs larger tick delay because forceEnd has a tick delay
+                // This means a player's click can only be registered every 0.5 seconds (10 ticks)
                 Sponge.getScheduler().createTaskBuilder().execute(() -> clickingMainInv.remove(player.getUniqueId())).delayTicks(10).submit(SafeTrade.getPlugin());
 
                 // Only players in a side can use these buttons
@@ -361,6 +366,7 @@ public class Trade {
                         }).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Main.getQuit()) && state == TradeState.TRADING) {
+                        sendMessage(Text.of(TextColors.GRAY, "Trade ended by " + player.getName() + "."));
                         Sponge.getScheduler().createTaskBuilder().execute(this::forceEnd).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Main.getMoneyStorage(side))) {
@@ -486,20 +492,40 @@ public class Trade {
      * The result of a {@link Trade}.
      */
     public class Result {
-        public final Trade trade;
-        public final TradeEvolutionWrapper.Result evolutionResult;
-        public final TradeResult tradeResult;
+        private final Trade trade;
+        private final TradeEvolutionWrapper.Result evolutionResult;
+        private final TradeResult tradeResult;
+        private final Log tradeLog;
 
         private Result(Trade trade, TradeResult tradeResult) {
             this.trade = trade;
             this.tradeResult = tradeResult;
             this.evolutionResult = new TradeEvolutionWrapper(trade).DUMMY();
+            this.tradeLog = new Log(trade);
         }
 
         private Result(Trade trade, TradeEvolutionWrapper.Result evolutionResult, TradeResult tradeResult) {
             this.trade = trade;
             this.evolutionResult = evolutionResult;
             this.tradeResult = tradeResult;
+            this.tradeLog = new Log(trade);
+        }
+
+
+        public Trade getTrade() {
+            return trade;
+        }
+
+        public TradeEvolutionWrapper.Result getEvolutionResult() {
+            return evolutionResult;
+        }
+
+        public TradeResult getTradeResult() {
+            return tradeResult;
+        }
+
+        public Log getTradeLog() {
+            return tradeLog;
         }
     }
 }

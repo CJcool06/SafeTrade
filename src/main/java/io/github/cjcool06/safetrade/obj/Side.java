@@ -3,6 +3,7 @@ package io.github.cjcool06.safetrade.obj;
 import com.pixelmonmod.pixelmon.Pixelmon;
 import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.InventoryType;
+import io.github.cjcool06.safetrade.api.enums.PrefixType;
 import io.github.cjcool06.safetrade.api.events.trade.InventoryChangeEvent;
 import io.github.cjcool06.safetrade.helpers.InventoryHelper;
 import io.github.cjcool06.safetrade.utils.Utils;
@@ -203,7 +204,7 @@ public class Side {
      */
     public void sendMessage(Text text) {
         if (getPlayer().isPresent()) {
-            getPlayer().get().sendMessage(text);
+            SafeTrade.sendMessageToPlayer(getPlayer().get(), PrefixType.SAFETRADE, text);
         }
     }
 

@@ -20,8 +20,12 @@ import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.key.Keys;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.User;
+import org.spongepowered.api.item.inventory.Inventory;
+import org.spongepowered.api.item.inventory.InventoryTransformations;
 import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.item.inventory.ItemStackSnapshot;
+import org.spongepowered.api.item.inventory.entity.PlayerInventory;
+import org.spongepowered.api.item.inventory.transaction.InventoryTransactionResult;
 import org.spongepowered.api.service.user.UserStorageService;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.action.TextActions;
@@ -134,7 +138,7 @@ public class Utils {
                 .build();
     }
 
-    public static Text getBroadcastOverview(Trade trade) {
+    public static Text getTradeOverview(Trade trade) {
         Text[] texts = getTradeOverviewLore(trade);
 
         return Text.builder()
@@ -290,5 +294,12 @@ public class Utils {
         }
 
         return pokemon;
+    }
+
+    public static boolean giveItem(Player player, ItemStackSnapshot snapshot) {
+        PlayerInventory inv = (PlayerInventory)player.getInventory();
+        Inventory prioritisedInv = inv.getMain().transform(InventoryTransformations.PLAYER_MAIN_HOTBAR_FIRST);
+
+        return prioritisedInv.offer(snapshot.createStack()).getType() == InventoryTransactionResult.Type.SUCCESS;
     }
 }

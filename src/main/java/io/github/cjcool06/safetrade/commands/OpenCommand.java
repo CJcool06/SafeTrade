@@ -1,6 +1,9 @@
 package io.github.cjcool06.safetrade.commands;
 
+import io.github.cjcool06.safetrade.SafeTrade;
 import io.github.cjcool06.safetrade.api.enums.InventoryType;
+import io.github.cjcool06.safetrade.api.enums.PrefixType;
+import io.github.cjcool06.safetrade.obj.Side;
 import io.github.cjcool06.safetrade.obj.Trade;
 import io.github.cjcool06.safetrade.trackers.Tracker;
 import org.spongepowered.api.command.CommandResult;
@@ -23,14 +26,21 @@ public class OpenCommand implements CommandExecutor {
     }
 
     public CommandResult execute(CommandSource src, CommandContext args) {
-        Player player = (Player)src;
-        Trade trade = Tracker.getActiveTrade(player);
+        if (src instanceof Player) {
+            Player player = (Player) src;
+            Trade trade = Tracker.getActiveTrade(player);
 
-        if (trade != null) {
-            trade.getSide(player.getUniqueId()).ifPresent(side -> side.changeInventory(InventoryType.MAIN));
+            if (trade != null) {
+                // Will never be null
+                Side side = trade.getSide(player.getUniqueId()).get();
+                side.changeInventory(InventoryType.MAIN);
+                SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.GREEN, "Opening trade with ", TextColors.GOLD, side.getOtherSide().getUser().get().getName(), TextColors.GREEN, "."));
+            } else {
+                SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.RED, "You are not currently participating in a trade."));
+            }
         }
         else {
-            player.sendMessage(Text.of(TextColors.RED, "You are not currently participating in a SafeTrade."));
+            src.sendMessage(Text.of(TextColors.RED, "You must be a player to do that."));
         }
 
         return CommandResult.success();
