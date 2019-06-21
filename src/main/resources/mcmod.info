@@ -15,8 +15,8 @@
     "screenshots": [],
     "dependencies": [
       "spongeapi@7.1.0-SNAPSHOT",
-      "pixelmon@7.0.1",
-      "forge@1.12.2-14.23.4.2705"
+      "pixelmon@7.0.6",
+      "forge@1.12.2-14.23.4.2768"
     ]
   }
 ]
