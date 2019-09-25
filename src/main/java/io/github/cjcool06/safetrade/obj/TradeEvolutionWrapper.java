@@ -308,7 +308,7 @@ public class TradeEvolutionWrapper {
         }
 
         /**
-         * Gets the trade associated to the original {@link TradeEvolutionWrapper}.
+         * Gets the trade associated with the original {@link TradeEvolutionWrapper}.
          *
          * @return The trade
          */
@@ -327,7 +327,7 @@ public class TradeEvolutionWrapper {
 
         /**
          * Gets all successes from the execution of the {@link TradeEvolutionWrapper}
-         * by the {@link Side}.
+         * for a {@link Side}.
          *
          * @param side The side
          * @return The successes of the side
@@ -344,7 +344,7 @@ public class TradeEvolutionWrapper {
      *
      * @return The dummy result
      */
-    public  Result DUMMY() {
+    public Result DUMMY() {
         return new Result(trade, new HashMap<>());
     }
 }

@@ -182,7 +182,7 @@ public class Trade {
         side1.vault.unloadToStorage(storage0);
         side0.vault.unloadToStorage(storage1);
 
-        // Requires schedular as some calls come through Sponge's inventory events
+        // Requires scheduler as some calls come through Sponge's inventory events
         // and will cause horrible errors (Phase Stack errors, yuck!).
         Sponge.getScheduler().createTaskBuilder().execute(() -> {
             sides[0].getPlayer().ifPresent(player -> {
@@ -510,7 +510,6 @@ public class Trade {
             this.tradeResult = tradeResult;
             this.tradeLog = new Log(trade);
         }
-
 
         public Trade getTrade() {
             return trade;

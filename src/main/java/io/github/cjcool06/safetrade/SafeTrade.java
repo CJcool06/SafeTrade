@@ -79,7 +79,7 @@ public class SafeTrade {
         EVENT_BUS.register(new TradeConnectionListener());
         logger.info("Listeners registered.");
 
-        Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade", "strade", "st");
+        Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade");
         logger.info("Commands registered.");
 
         Sponge.getServiceManager()
