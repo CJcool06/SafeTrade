@@ -82,7 +82,7 @@ public class LogsCommand implements CommandExecutor {
                                     showLogs(src, target, target2);
                                 })).build()
                                 : Text.of()
-                            ).append(log.getDisplayText()).build());
+                            ).append(log.getDisplayTextWithDate()).build());
                 }
             }
             List<Text> reversedContents = Lists.reverse(contents);

@@ -19,10 +19,12 @@ import org.spongepowered.api.text.format.TextColors;
 public class StorageCommand implements CommandExecutor {
     public static CommandSpec getSpec() {
         return CommandSpec.builder()
-                .description(Text.of("Manipulate a player's storage"))
-                .permission("safetrade.admin.storage.view")
+                .description(Text.of("Opens a player's storage"))
+                .permission("safetrade.common.storage.view")
                 .arguments(
-                        GenericArguments.user(Text.of("target")),
+                        GenericArguments.optional(
+                                GenericArguments.user(Text.of("target"))
+                        ),
                         GenericArguments.optional(
                                 GenericArguments.choices(Text.of("options"),
                                         ImmutableMap.<String, String>builder()
@@ -34,7 +36,7 @@ public class StorageCommand implements CommandExecutor {
     }
 
     public CommandResult execute(CommandSource src, CommandContext args) {
-        User user = args.<User>getOne("target").get();
+        User target = args.<User>getOne("target").isPresent() ? args.<User>getOne("target").get() : (User) src;
         PlayerStorage storage;
 
         if (args.<String>getOne("options").isPresent()) {
@@ -46,24 +48,29 @@ public class StorageCommand implements CommandExecutor {
                     return CommandResult.success();
                 }
 
-                storage = Tracker.getStorage(user);
+                storage = Tracker.getStorage(target);
                 if (storage != null && !storage.isEmpty()) {
                     storage.clearAll();
-                    SafeTrade.sendMessageToCommandSource(src, PrefixType.STORAGE, Text.of(TextColors.GOLD, user.getName() + "'s", TextColors.GREEN, " storage has been cleared."));
+                    SafeTrade.sendMessageToCommandSource(src, PrefixType.STORAGE, Text.of(TextColors.GOLD, target.getName() + "'s", TextColors.GREEN, " storage has been cleared."));
                 }
                 else {
-                    SafeTrade.sendMessageToCommandSource(src, PrefixType.STORAGE, Text.of(TextColors.GOLD, user.getName() + "'s", TextColors.RED, " storage is already empty."));
+                    SafeTrade.sendMessageToCommandSource(src, PrefixType.STORAGE, Text.of(TextColors.GOLD, target.getName() + "'s", TextColors.RED, " storage is already empty."));
                 }
             }
 
             return CommandResult.success();
         }
 
-        if (src instanceof Player) {
+        else if (src instanceof Player) {
             Player player = (Player)src;
-            storage = Tracker.getOrCreateStorage(user);
+
+            if (!player.getUniqueId().equals(target.getUniqueId()) && !player.hasPermission("safetrade.admin.storage.view")) {
+                SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.RED, "You do not have permission to open another player's storage"));
+            }
+
+            storage = Tracker.getOrCreateStorage(target);
             storage.open(player);
-            SafeTrade.sendMessageToCommandSource(src, PrefixType.STORAGE, Text.of(TextColors.GREEN, "Opening ", player.getUniqueId().equals(storage.getPlayerUUID()) ? Text.of("your") : Text.of(TextColors.GOLD, user.getName() + "'s"), TextColors.GREEN, " storage."));
+            SafeTrade.sendMessageToCommandSource(src, PrefixType.STORAGE, Text.of(TextColors.GREEN, "Opening ", player.getUniqueId().equals(storage.getPlayerUUID()) ? Text.of("your") : Text.of(TextColors.GOLD, target.getName() + "'s"), TextColors.GREEN, " storage."));
         }
         else {
             SafeTrade.sendMessageToCommandSource(src, PrefixType.STORAGE, Text.of(TextColors.RED, "You must be a player to do that."));

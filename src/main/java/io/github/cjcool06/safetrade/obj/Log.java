@@ -364,6 +364,17 @@ public class Log {
 
     public Text getDisplayText() {
         return Text.builder()
+                .append(Text.of(TextColors.AQUA, getParticipant().getName(), TextColors.DARK_AQUA, " & ", Text.of(TextColors.AQUA, getOtherParticipant().getName())))
+                .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Click here to see this trade's extended log")))
+                .onClick(TextActions.executeCallback(src -> {
+                    Player player = (Player)src;
+                    Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
+                }))
+                .build();
+    }
+
+    public Text getDisplayTextWithDate() {
+        return Text.builder()
                 .append(Text.builder().append(Text.of(TextColors.LIGHT_PURPLE, "[" + Log.getFormatter().format(Utils.convertToUTC(LocalDateTime.now())) + " UTC] "))
                         .onHover(TextActions.showText(Text.of(TextColors.GRAY, "Day/Month/Year Hour:Minute"))).build())
                 .append(Text.of(TextColors.AQUA, getParticipant().getName(), TextColors.DARK_AQUA, " & ", Text.of(TextColors.AQUA, getOtherParticipant().getName())))

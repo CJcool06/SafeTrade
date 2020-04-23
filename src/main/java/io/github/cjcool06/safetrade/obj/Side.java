@@ -140,7 +140,7 @@ public class Side {
                     break;
                 case OVERVIEW:
                     currentInventory = InventoryType.OVERVIEW;
-                    player.openInventory(parentTrade.getOverviewInventory());
+                    player.openInventory(InventoryHelper.buildAndGetOverviewInventory(parentTrade));
                     break;
                 case POKEMON:
                     currentInventory = InventoryType.POKEMON;
@@ -180,7 +180,7 @@ public class Side {
                 player.openInventory(parentTrade.getTradeInventory());
                 break;
             case OVERVIEW:
-                player.openInventory(parentTrade.getOverviewInventory());
+                player.openInventory(InventoryHelper.buildAndGetOverviewInventory(parentTrade));
                 break;
             case POKEMON:
                 player.openInventory(vault.pokemonStorage);

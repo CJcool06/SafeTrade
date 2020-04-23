@@ -5,7 +5,6 @@ import io.github.cjcool06.safetrade.api.enums.InventoryType;
 import io.github.cjcool06.safetrade.api.enums.PrefixType;
 import io.github.cjcool06.safetrade.api.enums.TradeResult;
 import io.github.cjcool06.safetrade.api.enums.TradeState;
-import io.github.cjcool06.safetrade.api.events.trade.ConnectionEvent;
 import io.github.cjcool06.safetrade.api.events.trade.StateChangedEvent;
 import io.github.cjcool06.safetrade.api.events.trade.TradeCreationEvent;
 import io.github.cjcool06.safetrade.api.events.trade.TradeEvent;
@@ -43,7 +42,6 @@ public class Trade {
     private final Inventory tradeInventory;
 
     private TradeState state = TradeState.TRADING;
-    private Inventory overviewInventory;
     private List<UUID> clickingMainInv = new ArrayList<>();
 
     public Trade(Player participant1, Player participant2) {
@@ -67,8 +65,6 @@ public class Trade {
                 .listener(InteractInventoryEvent.Close.class, event -> InventoryHelper.handleBasicClose(this, InventoryType.MAIN, event))
                 .build(SafeTrade.getPlugin());
         reformatInventory();
-
-        overviewInventory = InventoryHelper.buildAndGetOverviewInventory(this);
 
         Tracker.addActiveTrade(this);
         SafeTrade.EVENT_BUS.post(new TradeCreationEvent(this));
@@ -103,10 +99,6 @@ public class Trade {
 
     public Inventory getTradeInventory() {
         return tradeInventory;
-    }
-
-    public Inventory getOverviewInventory() {
-        return overviewInventory;
     }
 
     /**
@@ -362,7 +354,6 @@ public class Trade {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> {
                             side.changeInventory(InventoryType.NONE);
                             reformatInventory();
-                            SafeTrade.EVENT_BUS.post(new ConnectionEvent.Left(side));
                         }).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Main.getQuit()) && state == TradeState.TRADING) {

@@ -144,7 +144,7 @@ public class InventoryHelper {
     //  - Money (Main)
     //
 
-    private static Map<Inventory, Currency> currentCurrency = new HashMap<>();
+    private static Map<UUID, Currency> currentCurrency = new HashMap<>();
 
     public static Inventory buildAndGetMoneyInventory(Side side) {
         Inventory inventory = Inventory.builder()
@@ -162,29 +162,30 @@ public class InventoryHelper {
     }
 
     private static void updateMoneyInventory(Inventory inventory, Side side) {
+        Currency currency = currentCurrency.getOrDefault(side.sideOwnerUUID, SafeTrade.getEcoService().getDefaultCurrency());
         inventory.slots().forEach(slot -> {
             int i = slot.getProperty(SlotIndex.class, "slotindex").get().getValue();
 
             if (i == 1) {
-                slot.set(ItemUtils.Money.getMoneyBars(1));
+                slot.set(ItemUtils.Money.getMoneyBars(currency, 1));
             }
             else if (i == 2) {
-                slot.set(ItemUtils.Money.getMoneyBars(10));
+                slot.set(ItemUtils.Money.getMoneyBars(currency, 10));
             }
             else if (i == 3) {
-                slot.set(ItemUtils.Money.getMoneyBars(100));
+                slot.set(ItemUtils.Money.getMoneyBars(currency, 100));
             }
             else if (i == 4) {
-                slot.set(ItemUtils.Money.getMoneyBars(1000));
+                slot.set(ItemUtils.Money.getMoneyBars(currency, 1000));
             }
             else if (i == 5) {
-                slot.set(ItemUtils.Money.getMoneyBars(10000));
+                slot.set(ItemUtils.Money.getMoneyBars(currency, 10000));
             }
             else if (i == 6) {
-                slot.set(ItemUtils.Money.getMoneyBars(100000));
+                slot.set(ItemUtils.Money.getMoneyBars(currency, 100000));
             }
             else if (i == 7) {
-                slot.set(ItemUtils.Money.getMoneyBars(1000000));
+                slot.set(ItemUtils.Money.getMoneyBars(currency, 1000000));
             }
             else if (i == 18) {
                 slot.set(ItemUtils.Other.getBackButton());
@@ -193,7 +194,7 @@ public class InventoryHelper {
                 slot.set(ItemUtils.Money.getTotalMoney(side));
             }
             else if (i == 23) {
-                slot.set(ItemUtils.Money.getPlayersMoney(side, currentCurrency.getOrDefault(inventory, SafeTrade.getEcoService().getDefaultCurrency())));
+                slot.set(ItemUtils.Money.getPlayersMoney(side, currency));
             }
             else if (i == 26) {
                 slot.set(ItemUtils.Money.changeCurrency());
@@ -212,9 +213,10 @@ public class InventoryHelper {
                     ItemStack item = transaction.getOriginal().createStack();
 
                     if (item.equalTo(ItemUtils.Other.getBackButton())) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() ->
-                                side.changeInventoryForViewer(player, side.parentTrade.getState() == TradeState.WAITING_FOR_CONFIRMATION ? InventoryType.OVERVIEW : InventoryType.MAIN)
-                        ).delayTicks(1).submit(SafeTrade.getPlugin());
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> {
+                            side.changeInventoryForViewer(player, side.parentTrade.getState() == TradeState.WAITING_FOR_CONFIRMATION ? InventoryType.OVERVIEW : InventoryType.MAIN);
+                            currentCurrency.remove(side.sideOwnerUUID);
+                        }).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     // If player is not the in the side of this vault, or the if the vault is locked, or they didn't left/right click, nothing will happen.
                     // Checking for player is redundant when going through the main trade inventory, but I'll keep it here in-case a player somehow opens another side's money inventory
@@ -226,10 +228,11 @@ public class InventoryHelper {
                             return;
                         }
 
+                        Currency currency = currentCurrency.getOrDefault(side.sideOwnerUUID, SafeTrade.getEcoService().getDefaultCurrency());
+
                         for (int i = 1; i <= 1000000; i *= 10) {
 
-                            if (item.equalTo(ItemUtils.Money.getMoneyBars(i))) {
-                                Currency currency = currentCurrency.getOrDefault(event.getTargetInventory(), SafeTrade.getEcoService().getDefaultCurrency());
+                            if (item.equalTo(ItemUtils.Money.getMoneyBars(currency, i))) {
                                 // Left clicking = adding money to trade
                                 if (event instanceof ClickInventoryEvent.Primary) {
                                     TransactionResult result = SafeTrade.getEcoService().getOrCreateAccount(side.getUser().get().getUniqueId()).get()
@@ -326,10 +329,10 @@ public class InventoryHelper {
 
                     for (Currency currency : SafeTrade.getEcoService().getCurrencies()) {
                         if (item.equalTo(ItemUtils.Money.getCurrency(currency))) {
-                            currentCurrency.put(parentMoneyInventory, currency);
+                            currentCurrency.put(side.sideOwnerUUID, currency);
+
                             Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                                updateMoneyInventory(parentMoneyInventory, side);
-                                player.openInventory(parentMoneyInventory);
+                                player.openInventory(buildAndGetMoneyInventory(side));
                             }).delayTicks(1).submit(SafeTrade.getPlugin());
                         }
                     }
@@ -593,8 +596,10 @@ public class InventoryHelper {
                         else if (item.equalTo(ItemUtils.Overview.getCancel())) {
                             side.setConfirmed(false);
                             side.setReady(false);
+                            side.vault.setLocked(false);
                             otherSide.setConfirmed(false);
                             otherSide.setReady(false);
+                            otherSide.vault.setLocked(false);
                             trade.setState(TradeState.TRADING);
 
                             Sponge.getScheduler().createTaskBuilder().execute(trade::reformatInventory).delayTicks(1).submit(SafeTrade.getPlugin());
@@ -1078,6 +1083,9 @@ public class InventoryHelper {
                     else if (item.equalTo(ItemUtils.Storage.getAutoClaim(storage)) && (storage.getPlayerUUID().equals(player.getUniqueId()) || player.hasPermission("safetrade.admin.storage.interact.autoclaim"))) {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> {
                             storage.setAutoGive(!storage.isAutoGiveEnabled()); // This doesn't need to be delayed but no harm
+                            storage.giveItems().forEach(snapshot -> SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, snapshot.getQuantity(), "x ", snapshot.getType().getTranslation().get(), TextColors.GREEN, " was added to your inventory.")));
+                            storage.givePokemon().forEach(pokemon -> SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, pokemon.getDisplayName(), TextColors.GREEN, " was added to your party/pc.")));
+                            storage.giveMoney().forEach(money -> SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, money.getCurrency().getSymbol(), money.getBalance().intValue(), TextColors.GREEN, " was added to your bank account.")));
                             updateStorageInventory(event.getTargetInventory(), storage);
                         }).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
@@ -1177,19 +1185,24 @@ public class InventoryHelper {
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
+                    Iterator<ItemStack> iter = itemsForClicking.iterator();
 
                     if (item.equalTo(ItemUtils.Other.getBackButton())) {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(storage.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (player.getUniqueId().equals(storage.getPlayerUUID())) {
-                        for (ItemStack i : itemsForClicking) {
+                        while (iter.hasNext()) {
+                            ItemStack i = iter.next();
+
                             if (item.equalTo(i)) {
                                 ItemStackSnapshot snapshot = storage.getItems().get(itemsForClicking.indexOf(i));
 
                                 if (event instanceof ClickInventoryEvent.Primary) {
                                     if (Utils.giveItem(player, snapshot)) {
                                         storage.removeItem(snapshot);
-                                        SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, snapshot.getQuantity(), "x", snapshot.getType().getTranslation().get(), TextColors.GREEN, " was added to your inventory."));
+                                        iter.remove();
+                                        SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, snapshot.getQuantity(), "x ", snapshot.getType().getTranslation().get(), TextColors.GREEN, " was added to your inventory."));
+                                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getStorageItemsInventory(player, storage))).delayTicks(1).submit(SafeTrade.getPlugin());
                                     }
                                     else {
                                         SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.RED, "Cannot claim item: Inventory is full."));
@@ -1206,13 +1219,13 @@ public class InventoryHelper {
 
                                 if (event instanceof ClickInventoryEvent.Primary) {
                                     Tracker.getOrCreateStorage(player).addItem(snapshot);
-                                    SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, snapshot.getQuantity(), "x", snapshot.getType().getTranslation().get(), TextColors.GREEN, " was added to your storage."));
+                                    SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, snapshot.getQuantity(), "x ", snapshot.getType().getTranslation().get(), TextColors.GREEN, " was added to your storage."));
                                 }
                                 else if (event instanceof ClickInventoryEvent.Secondary) {
                                     storage.removeItem(snapshot);
-                                    itemsForClicking.remove(i);
+                                    iter.remove();
                                     Sponge.getScheduler().createTaskBuilder().execute(() -> updateStorageItemsInventory(event.getTargetInventory(), itemsForClicking)).delayTicks(1).submit(SafeTrade.getPlugin());
-                                    SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, snapshot.getQuantity(), "x", snapshot.getType().getTranslation().get(), TextColors.GREEN, " was removed from " + storage.getUser().get().getName() + "'s storage."));
+                                    SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, snapshot.getQuantity(), "x ", snapshot.getType().getTranslation().get(), TextColors.GREEN, " was removed from " + storage.getUser().get().getName() + "'s storage."));
                                 }
                                 break;
                             }
@@ -1298,18 +1311,23 @@ public class InventoryHelper {
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
+                    Iterator<ItemStack> iter = pokemonItems.iterator();
 
                     if (item.equalTo(ItemUtils.Other.getBackButton())) {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(storage.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (player.getUniqueId().equals(storage.getPlayerUUID())) {
-                        for (ItemStack i : pokemonItems) {
+                        while (iter.hasNext()) {
+                            ItemStack i = iter.next();
+
                             if (item.equalTo(i)) {
                                 Pokemon p = storage.getPokemons().get(pokemonItems.indexOf(i));
 
                                 if (event instanceof ClickInventoryEvent.Primary) {
                                     if (Pixelmon.storageManager.getParty(storage.getPlayerUUID()).add(p)) {
                                         storage.removePokemon(p);
+                                        iter.remove();
+                                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getStoragePokemonInventory(player, storage))).delayTicks(1).submit(SafeTrade.getPlugin());
                                         SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, p.getDisplayName(), TextColors.GREEN, " was added to your party/pc."));
                                     }
                                     else {
@@ -1321,7 +1339,9 @@ public class InventoryHelper {
                         }
                     }
                     else if (player.hasPermission("safetrade.admin.storage.interact.pokemon")) {
-                        for (ItemStack i : pokemonItems) {
+                        while (iter.hasNext()) {
+                            ItemStack i = iter.next();
+
                             if (item.equalTo(i)) {
                                 Pokemon p = storage.getPokemons().get(pokemonItems.indexOf(i));
 
@@ -1331,7 +1351,7 @@ public class InventoryHelper {
                                 }
                                 else if (event instanceof ClickInventoryEvent.Secondary) {
                                     storage.removePokemon(p);
-                                    pokemonItems.remove(i);
+                                    iter.remove();
                                     Sponge.getScheduler().createTaskBuilder().execute(() -> updateStoragePokemonInventory(event.getTargetInventory(), pokemonItems)).delayTicks(1).submit(SafeTrade.getPlugin());
                                     SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, p.getDisplayName(), TextColors.GREEN, " was removed from " + storage.getUser().get().getName() + "'s storage."));
                                 }
@@ -1347,12 +1367,12 @@ public class InventoryHelper {
     //
     //  INVENTORIES
     //
-    //  - Log (MoneyWrapper)
+    //  - Storage (Money)
     //
     //
     //  CLICKERS
     //
-    //  - Log (MoneyWrapper)
+    //  - Storage (Money)
     //
 
     private static Inventory getStorageMoneyInventory(Player player, PlayerStorage storage) {
@@ -1403,32 +1423,39 @@ public class InventoryHelper {
                 if (iter.hasNext()) {
                     slot.set(iter.next());
                 }
-            } else if (i == 45) {
+            }
+            else if (i == 45) {
                 slot.set(ItemUtils.Other.getBackButton());
-            } else if (i <= 53) {
+            }
+            else if (i <= 53) {
                 slot.set(ItemUtils.Other.getFiller(DyeColors.GRAY));
             }
         });
     }
 
-    private static void handleStorageMoneyClick(PlayerStorage storage, List<ItemStack> moneyWrapperItems, ClickInventoryEvent event) {
+    private static void handleStorageMoneyClick(PlayerStorage storage, List<ItemStack> moneyItems, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
+                    Iterator<ItemStack> iter = moneyItems.iterator();
 
                     if (item.equalTo(ItemUtils.Other.getBackButton())) {
                         Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(storage.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (player.getUniqueId().equals(storage.getPlayerUUID())) {
-                        for (ItemStack i : moneyWrapperItems) {
+                        while (iter.hasNext()) {
+                            ItemStack i = iter.next();
+
                             if (item.equalTo(i)) {
-                                MoneyWrapper moneyWrapper = storage.getMoney().get(moneyWrapperItems.indexOf(i));
+                                MoneyWrapper moneyWrapper = storage.getMoney().get(moneyItems.indexOf(i));
 
                                 if (event instanceof ClickInventoryEvent.Primary) {
                                     if (moneyWrapper.transferBalance(SafeTrade.getEcoService().getOrCreateAccount(player.getUniqueId()).get()).getResult() == ResultType.SUCCESS) {
                                         storage.removeMoney(moneyWrapper);
+                                        iter.remove();
+                                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getStorageMoneyInventory(player, storage))).delayTicks(1).submit(SafeTrade.getPlugin());
                                         SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, moneyWrapper.getCurrency().getSymbol(), moneyWrapper.getBalance().intValue(), TextColors.GREEN, " was added to your bank account."));
                                     }
                                     else {
@@ -1440,9 +1467,11 @@ public class InventoryHelper {
                         }
                     }
                     else if (player.hasPermission("safetrade.admin.storage.interact.money")) {
-                        for (ItemStack i : moneyWrapperItems) {
+                        while (iter.hasNext()) {
+                            ItemStack i = iter.next();
+
                             if (item.equalTo(i)) {
-                                MoneyWrapper moneyWrapper = storage.getMoney().get(moneyWrapperItems.indexOf(i));
+                                MoneyWrapper moneyWrapper = storage.getMoney().get(moneyItems.indexOf(i));
 
                                 if (event instanceof ClickInventoryEvent.Primary) {
                                     Tracker.getOrCreateStorage(player).addMoney(moneyWrapper);
@@ -1450,8 +1479,8 @@ public class InventoryHelper {
                                 }
                                 else if (event instanceof ClickInventoryEvent.Secondary) {
                                     storage.removeMoney(moneyWrapper);
-                                    moneyWrapperItems.remove(i);
-                                    Sponge.getScheduler().createTaskBuilder().execute(() -> updateStorageMoneyInventory(event.getTargetInventory(), moneyWrapperItems)).delayTicks(1).submit(SafeTrade.getPlugin());
+                                    iter.remove();
+                                    Sponge.getScheduler().createTaskBuilder().execute(() -> updateStorageMoneyInventory(event.getTargetInventory(), moneyItems)).delayTicks(1).submit(SafeTrade.getPlugin());
                                     SafeTrade.sendMessageToPlayer(player, PrefixType.STORAGE, Text.of(TextColors.GOLD, moneyWrapper.getCurrency().getSymbol(), moneyWrapper.getBalance().intValue(), TextColors.GREEN, " was removed from " + storage.getUser().get().getName() + "'s storage."));
                                 }
                                 break;

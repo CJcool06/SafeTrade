@@ -25,10 +25,16 @@ archivesBaseName = "SafeTrade"
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+tasks.withType(JavaCompile) {
+    task ->
+        task.options.encoding = 'UTF-8'
+        task.options.fork = true
+}
+
 minecraft {
-    version = "1.12.2-14.23.5.2768"
+    version = "1.12.2-14.23.5.2838"
     runDir = "run"
-    mappings = "snapshot_20171003"
+    mappings = "stable_39"
 }
 
 repositories {
@@ -36,7 +42,7 @@ repositories {
 }
 
 dependencies {
-    compile 'org.spongepowered:spongeapi:7.1.0-SNAPSHOT'
+    compile 'org.spongepowered:spongeapi:7.2.0-SNAPSHOT'
 }
 
 //Fix forges AT breaking everything because the AT checker is stupid

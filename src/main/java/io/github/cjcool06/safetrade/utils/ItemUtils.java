@@ -71,13 +71,25 @@ public class ItemUtils {
         }
 
         public static ItemStack getMoneyStorage(Side side) {
-            Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
+            List<Text> lore = new ArrayList<>();
             ItemStack item = ItemStack.of(ItemTypes.GOLD_BLOCK, 1);
-            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, currency.getSymbol(), side.vault.account.getBalance(currency)));
-            if (side.parentTrade.getState().equals(TradeState.TRADING)) {
-                item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Click to change the amount of ", currency.getPluralDisplayName(), " to trade"),
-                        Text.of(TextColors.GOLD, "Only " + side.getUser().get().getName() + " can do this")));
+            item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Money"));
+
+            for (MoneyWrapper wrapper : side.vault.getAllMoney()) {
+                lore.add(Text.of(
+                        TextColors.DARK_BLUE, "- ", TextColors.GREEN, wrapper.getCurrency().getSymbol(),
+                        NumberFormat.getNumberInstance(Locale.US).format(wrapper.getBalance().intValue())
+                ));
             }
+
+            if (side.parentTrade.getState().equals(TradeState.TRADING)) {
+                lore.add(Text.of());
+                lore.add(Text.of(TextColors.GRAY, "Click to change the amount of money to trade"));
+                lore.add(Text.of(TextColors.GOLD, "Only " + side.getUser().get().getName() + " can do this"));
+            }
+
+            item.offer(Keys.ITEM_LORE, lore);
+
             return item;
         }
 
@@ -163,8 +175,7 @@ public class ItemUtils {
             return item;
         }
 
-        public static ItemStack getMoneyBars(int amount) {
-            Currency currency = SafeTrade.getEcoService().getDefaultCurrency();
+        public static ItemStack getMoneyBars(Currency currency, int amount) {
             ItemStack item = ItemStack.of(ItemTypes.GOLD_INGOT, 1);
             item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, currency.getSymbol(), NumberFormat.getNumberInstance(Locale.US).format(amount)));
             item.offer(Keys.ITEM_LORE, Lists.newArrayList(
@@ -265,6 +276,7 @@ public class ItemUtils {
                     Text.of(TextColors.DARK_GREEN, "During this time you are unable to change anything about the trade."),
                     Text.of(),
                     Text.of(TextColors.GRAY, "The trade will execute once both players have confirmed."),
+                    Text.of(),
                     Text.of(TextColors.RED, "There is no reverting this!")));
             return item;
         }
@@ -276,7 +288,7 @@ public class ItemUtils {
         public static ItemStack getMoney(User user) {
             ItemStack item = ItemStack.of(ItemTypes.GOLD_BLOCK, 1);
             item.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Money"));
-            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "The money " + user.getName() + " traded")));
+            item.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Click to view the money " + user.getName() + " traded")));
             return item;
         }
 
@@ -359,7 +371,7 @@ public class ItemUtils {
             ItemStack itemStack = ItemStack.of(ItemTypes.DYE, 1);
             itemStack.offer(Keys.DYE_COLOR, DyeColors.RED);
             itemStack.offer(Keys.DISPLAY_NAME, Text.of(TextColors.RED, "Back"));
-            itemStack.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Return back to the main trade gui")));
+            itemStack.offer(Keys.ITEM_LORE, Lists.newArrayList(Text.of(TextColors.GRAY, "Return to the previous page.")));
             return itemStack;
         }
 

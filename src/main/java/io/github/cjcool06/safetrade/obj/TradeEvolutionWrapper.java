@@ -88,7 +88,7 @@ public class TradeEvolutionWrapper {
     private List<Pokemon> getPossibleEvolutions(Side side) {
         List<Pokemon> possibleEvolutions = new ArrayList<>();
 
-        if (!side.getPlayer().isPresent()) {
+        if (side.getPlayer().isPresent()) {
             for (Pokemon pokemon : side.vault.getAllPokemon()) {
                 EntityPixelmon pixelmon = pokemon.getOrSpawnPixelmon((EntityPlayerMP) side.getPlayer().get());
 
@@ -187,6 +187,14 @@ public class TradeEvolutionWrapper {
             }
         }
 
+        // Returns a random species if it can induce evolving
+        // For example, side1 trades haunter and side2 doesn't trade anything
+        if (otherSide.vault.getAllPokemon().size() == 0) {
+            if (getEvolution(pixelmonToEvolve, EnumSpecies.Abra) != null) {
+                return EnumSpecies.Abra;
+            }
+        }
+
         return null;
     }
 
@@ -235,14 +243,14 @@ public class TradeEvolutionWrapper {
                     return !moveset.hasAttack(a);
                 }).forEach((a) -> {
                     if (moveset.size() >= 4) {
-                        Pixelmon.network.sendTo(new OpenReplaceMoveScreen(pixelmon.getOwnerId(), a.baseAttack.attackIndex), (EntityPlayerMP)pixelmon.func_70902_q());
+                        Pixelmon.network.sendTo(new OpenReplaceMoveScreen(pixelmon.getOwnerId(), a.getActualMove().getAttackId()), (EntityPlayerMP)pixelmon.func_70902_q());
                     } else {
                         moveset.add(a);
                         pixelmon.update(new EnumUpdateType[]{EnumUpdateType.Moveset});
                         if (BattleRegistry.getBattle((EntityPlayer)pixelmon.func_70902_q()) != null) {
-                            ChatHandler.sendBattleMessage(pixelmon.func_70902_q(), "pixelmon.stats.learnedmove", new Object[]{pixelmon.getNickname(), a.baseAttack.getTranslatedName()});
+                            ChatHandler.sendBattleMessage(pixelmon.func_70902_q(), "pixelmon.stats.learnedmove", new Object[]{pixelmon.getNickname(), a.getActualMove().getTranslatedName()});
                         } else {
-                            ChatHandler.sendChat(pixelmon.func_70902_q(), "pixelmon.stats.learnedmove", new Object[]{pixelmon.getNickname(), a.baseAttack.getTranslatedName()});
+                            ChatHandler.sendChat(pixelmon.func_70902_q(), "pixelmon.stats.learnedmove", new Object[]{pixelmon.getNickname(), a.getActualMove().getTranslatedName()});
                         }
                     }
                 });
@@ -257,13 +265,13 @@ public class TradeEvolutionWrapper {
 
             while(var2.hasNext()) {
                 String moveName = (String)var2.next();
-                AttackBase ab = (AttackBase)AttackBase.getAttackBase(moveName).orElse(null);
+                AttackBase ab = AttackBase.getAttackBase(moveName).orElse(null);
                 if (ab == null) {
                     Pixelmon.LOGGER.error("Unknown move in evolution. To: " + evolution.to.name + ". Move: " + moveName);
                 } else {
                     evoMoves.add(ab);
-                    if (!pixelmon.relearnableEvolutionMoves.contains(ab.attackIndex)) {
-                        pixelmon.relearnableEvolutionMoves.add(ab.attackIndex);
+                    if (!pixelmon.relearnableEvolutionMoves.contains(ab.getAttackId())) {
+                        pixelmon.relearnableEvolutionMoves.add(ab.getAttackId());
                     }
                 }
             }
@@ -277,14 +285,14 @@ public class TradeEvolutionWrapper {
                 Moveset moveset = pixelmon.getPokemonData().getMoveset();
                 if (!moveset.hasAttack(a)) {
                     if (moveset.size() >= 4) {
-                        Pixelmon.network.sendTo(new OpenReplaceMoveScreen(pixelmon.getOwnerId(), a.baseAttack.attackIndex), (EntityPlayerMP)pixelmon.func_70902_q());
+                        Pixelmon.network.sendTo(new OpenReplaceMoveScreen(pixelmon.getOwnerId(), a.getActualMove().getAttackId()), (EntityPlayerMP)pixelmon.func_70902_q());
                     } else {
                         moveset.add(a);
                         pixelmon.update(new EnumUpdateType[]{EnumUpdateType.Moveset});
                         if (BattleRegistry.getBattle((EntityPlayer)pixelmon.func_70902_q()) != null) {
-                            ChatHandler.sendBattleMessage(pixelmon.func_70902_q(), "pixelmon.stats.learnedmove", new Object[]{pixelmon.getNickname(), a.baseAttack.getTranslatedName()});
+                            ChatHandler.sendBattleMessage(pixelmon.func_70902_q(), "pixelmon.stats.learnedmove", new Object[]{pixelmon.getNickname(), a.getActualMove().getTranslatedName()});
                         } else {
-                            ChatHandler.sendChat(pixelmon.func_70902_q(), "pixelmon.stats.learnedmove", new Object[]{pixelmon.getNickname(), a.baseAttack.getTranslatedName()});
+                            ChatHandler.sendChat(pixelmon.func_70902_q(), "pixelmon.stats.learnedmove", new Object[]{pixelmon.getNickname(), a.getActualMove().getTranslatedName()});
                         }
                     }
                 }
