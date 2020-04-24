@@ -428,12 +428,13 @@ public class InventoryHelper {
                         boolean continueChecks = true;
                         PlayerPartyStorage partyStorage = Pixelmon.storageManager.getParty(side.getUser().get().getUniqueId());
                         PCStorage pcStorage = Pixelmon.storageManager.getPCForPlayer(side.getUser().get().getUniqueId());
+                        PokemonSpec untradeable = PokemonSpec.from("untradeable");
 
                         for (ItemStack itemStack : partyMap.keySet()) {
                             if (itemStack.equalTo(item)) {
                                 Pokemon pokemon = partyMap.get(itemStack);
 
-                                if (PokemonSpec.from("untradeable").matches(pokemon) || partyStorage.countPokemon() <= 1) {
+                                if (untradeable.matches(pokemon) || partyStorage.countPokemon() <= 1 || pokemon.isInRanch()) {
                                     return;
                                 }
                                 if (Utils.getAllPokemon(partyStorage).contains(pokemon)) {
@@ -452,7 +453,7 @@ public class InventoryHelper {
                             }
                             if (itemStack.equalTo(item)) {
                                 Pokemon pokemon = pcMap.get(itemStack);
-                                if (PokemonSpec.from("untradeable").matches(pokemon)) {
+                                if (untradeable.matches(pokemon) || pokemon.isInRanch()) {
                                     return;
                                 }
                                 List<Pokemon> pcPokemon = Utils.getAllPokemon(pcStorage);
