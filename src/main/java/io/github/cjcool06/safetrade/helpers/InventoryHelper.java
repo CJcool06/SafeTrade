@@ -790,14 +790,19 @@ public class InventoryHelper {
     private static void handleLogItemsClick(Log log, User user, List<ItemStackSnapshot> actualItems, List<ItemStack> itemsForClicking, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
-            // If the player does not have interact permissions they will not be able to interact with the items of the log.
-            if (!player.hasPermission("safetrade.admin.logs.interact.items")) {
-                return;
-            }
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
                     PlayerStorage storage;
+
+                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+
+                    // If the player does not have interact permissions they will not be able to interact with the items of the log.
+                    if (!player.hasPermission("safetrade.admin.logs.interact.items")) {
+                        return;
+                    }
 
                     if (event instanceof ClickInventoryEvent.Primary) {
                         storage = Tracker.getOrCreateStorage(player);
@@ -807,10 +812,6 @@ public class InventoryHelper {
                     }
                     else {
                         return;
-                    }
-
-                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
 
                     for (ItemStack i : itemsForClicking) {
@@ -887,14 +888,19 @@ public class InventoryHelper {
     private static void handleLogPokemonClick(Log log, User user, List<Pokemon> pokemon, List<ItemStack> pokemonItems, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
-            // If the player does not have interact permissions they will not be able to interact with the pokemon of the log.
-            if (!player.hasPermission("safetrade.admin.logs.interact.pokemon")) {
-                return;
-            }
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
                     PlayerStorage storage;
+
+                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+
+                    // If the player does not have interact permissions they will not be able to interact with the pokemon of the log.
+                    if (!player.hasPermission("safetrade.admin.logs.interact.pokemon")) {
+                        return;
+                    }
 
                     if (event instanceof ClickInventoryEvent.Primary) {
                         storage = Tracker.getOrCreateStorage(player);
@@ -904,10 +910,6 @@ public class InventoryHelper {
                     }
                     else {
                         return;
-                    }
-
-                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
 
                     for (ItemStack i : pokemonItems) {
@@ -982,14 +984,19 @@ public class InventoryHelper {
     private static void handleLogMoneyClick(Log log, User user, List<MoneyWrapper> moneyWrappers, List<ItemStack> moneyWrapperItems, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
-            // If the player does not have interact permissions they will not be able to interact with the money of the log.
-            if (!player.hasPermission("safetrade.admin.logs.interact.money")) {
-                return;
-            }
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
                     PlayerStorage storage;
+
+                    // If the player does not have interact permissions they will not be able to interact with the money of the log.
+                    if (!player.hasPermission("safetrade.admin.logs.interact.money")) {
+                        return;
+                    }
+
+                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
 
                     if (event instanceof ClickInventoryEvent.Primary) {
                         storage = Tracker.getOrCreateStorage(player);
@@ -999,10 +1006,6 @@ public class InventoryHelper {
                     }
                     else {
                         return;
-                    }
-
-                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
 
                     for (ItemStack i : moneyWrapperItems) {
