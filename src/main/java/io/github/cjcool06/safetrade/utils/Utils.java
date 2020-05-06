@@ -40,6 +40,10 @@ import java.time.ZoneOffset;
 import java.util.*;
 
 public class Utils {
+
+    public static final PokemonSpec unbreedable = new PokemonSpec("untradeable");
+    public static final PokemonSpec untradeable = new PokemonSpec("untradeable");
+
     public static Optional<User> getUser(UUID uuid) {
         return Sponge.getServiceManager().provide(UserStorageService.class).get().get(uuid);
     }
@@ -179,8 +183,8 @@ public class Utils {
         else {
             heldItem += "None";
         }
-        String breedable = new PokemonSpec("unbreedable").matches(pokemon) ? "No" : "Yes";
-        String tradeable = new PokemonSpec("untradeable").matches(pokemon) ? "No" : "Yes";
+        String breedable = unbreedable.matches(pokemon) ? "No" : "Yes";
+        String tradeable = untradeable.matches(pokemon) ? "No" : "Yes";
         // EVs
         int hpEV = pokemon.getStats().evs.hp;
         int attackEV = pokemon.getStats().evs.attack;

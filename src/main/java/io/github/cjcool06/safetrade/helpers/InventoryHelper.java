@@ -2,7 +2,6 @@ package io.github.cjcool06.safetrade.helpers;
 
 import com.pixelmonmod.pixelmon.Pixelmon;
 import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
-import com.pixelmonmod.pixelmon.api.pokemon.PokemonSpec;
 import com.pixelmonmod.pixelmon.api.storage.PCStorage;
 import com.pixelmonmod.pixelmon.storage.PlayerPartyStorage;
 import io.github.cjcool06.safetrade.SafeTrade;
@@ -428,13 +427,12 @@ public class InventoryHelper {
                         boolean continueChecks = true;
                         PlayerPartyStorage partyStorage = Pixelmon.storageManager.getParty(side.getUser().get().getUniqueId());
                         PCStorage pcStorage = Pixelmon.storageManager.getPCForPlayer(side.getUser().get().getUniqueId());
-                        PokemonSpec untradeable = PokemonSpec.from("untradeable");
 
                         for (ItemStack itemStack : partyMap.keySet()) {
                             if (itemStack.equalTo(item)) {
                                 Pokemon pokemon = partyMap.get(itemStack);
 
-                                if (untradeable.matches(pokemon) || partyStorage.countPokemon() <= 1 || pokemon.isInRanch()) {
+                                if (Utils.untradeable.matches(pokemon) || partyStorage.countPokemon() <= 1 || pokemon.isInRanch()) {
                                     return;
                                 }
                                 if (Utils.getAllPokemon(partyStorage).contains(pokemon)) {
@@ -453,7 +451,7 @@ public class InventoryHelper {
                             }
                             if (itemStack.equalTo(item)) {
                                 Pokemon pokemon = pcMap.get(itemStack);
-                                if (untradeable.matches(pokemon) || pokemon.isInRanch()) {
+                                if (Utils.untradeable.matches(pokemon) || pokemon.isInRanch()) {
                                     return;
                                 }
                                 List<Pokemon> pcPokemon = Utils.getAllPokemon(pcStorage);
