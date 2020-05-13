@@ -708,20 +708,18 @@ public class Vault {
                                 Pokemon pokemon = entityStorage.get(index);
                                 // Need scheduler to wait for the click to cancel, otherwise the slot won't recognise there's an itemstack
                                 Sponge.getScheduler().createTaskBuilder().execute(() -> {
-                                    // If-statement should prevent egg dupe bug
-                                    if (side.currentInventory != InventoryType.NONE) {
-                                        removePokemon(pokemon);
+                                    if (removePokemon(index)) {
+                                        if (Pixelmon.storageManager.getParty(player.getUniqueId()).add(pokemon)) {
+                                            SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.GREEN, pokemon.getDisplayName() + " has been added to your party/pc"));
+                                        }
+                                        // uh oh, something went wrong!
+                                        else {
+                                            Tracker.getOrCreateStorage(player).addPokemon(pokemon);
+                                            SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.RED, "Uh oh, something went wrong! Your Pokemon was put in to your SafeTrade storage for safe-keeping. " +
+                                                    "Reconnect to receive everything in your storage."));
+                                        }
                                     }
                                 }).delayTicks(1).submit(SafeTrade.getPlugin());
-                                if (Pixelmon.storageManager.getParty(player.getUniqueId()).add(pokemon)) {
-                                    SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.GREEN, pokemon.getDisplayName() + " has been added to your party/pc"));
-                                }
-                                // uh oh, something went wrong!
-                                else {
-                                    Tracker.getOrCreateStorage(player).addPokemon(pokemon);
-                                    SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.RED, "Uh oh, something went wrong! Your Pokemon was put in to your SafeTrade storage for safe-keeping. " +
-                                            "Reconnect to receive everything in your storage."));
-                                }
                             }
                         }
                     }
