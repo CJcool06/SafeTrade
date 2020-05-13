@@ -77,8 +77,9 @@ public class TradeCommand implements CommandExecutor {
                 SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(Text.of(TextColors.RED, "You can't trade with yourself you banana.")));
             }
             else if (Tracker.getActiveTrade(player) != null) {
+                Side side = Tracker.getActiveTrade(player).getSide(player.getUniqueId()).get();
                 SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.RED, "You are already a participant in a SafeTrade.", "\n",
-                        Text.of(TextColors.GOLD, TextActions.executeCallback(dummySrc -> Tracker.getActiveTrade(player).getSide(player.getUniqueId()).get().changeInventory(InventoryType.MAIN))), "Click here to open your existing trade."));
+                        Text.of(TextColors.GOLD, TextActions.executeCallback(dummySrc -> Sponge.getCommandManager().process(side.getPlayer().get(), "safetrade open"))), "Click here to open your existing trade."));
             }
             else if (Tracker.getActiveTrade(target) != null) {
                 SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.RED, "That player is currently trading with another player."));
