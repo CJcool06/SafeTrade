@@ -635,6 +635,12 @@ public class Vault {
 
     private void handleItemStorageClick(ClickInventoryEvent event) {
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (InventoryHelper.hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            InventoryHelper.addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
@@ -684,6 +690,12 @@ public class Vault {
         event.setCancelled(true);
 
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (InventoryHelper.hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            InventoryHelper.addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();

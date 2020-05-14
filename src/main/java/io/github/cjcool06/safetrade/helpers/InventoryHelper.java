@@ -48,6 +48,23 @@ import java.util.*;
 public class InventoryHelper {
 
     //
+    // Cooldowns
+    //
+    // A cooldown lasts 5 ticks (0.25 seconds)
+    //
+
+    private static List<UUID> clickingMainInv = new ArrayList<>();
+
+    public static boolean hasCooldown(UUID uuid) {
+        return clickingMainInv.contains(uuid);
+    }
+
+    public static void addCooldown(UUID uuid) {
+        clickingMainInv.add(uuid);
+        Sponge.getScheduler().createTaskBuilder().execute(() -> clickingMainInv.remove(uuid)).delayTicks(5).submit(SafeTrade.getPlugin());
+    }
+
+    //
     // Default open handler for main trade inventories
     //
     // Default close handler for main trade inventories
@@ -207,6 +224,12 @@ public class InventoryHelper {
     private static void handleMoneyClick(Side side, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
@@ -318,6 +341,12 @@ public class InventoryHelper {
     private static void handleCurrenciesClick(Side side, ClickInventoryEvent event, Inventory parentMoneyInventory) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 ItemStack item = transaction.getOriginal().createStack();
 
@@ -413,6 +442,12 @@ public class InventoryHelper {
 
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
@@ -576,6 +611,12 @@ public class InventoryHelper {
             return;
         }
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
@@ -693,6 +734,12 @@ public class InventoryHelper {
     private static void handleLogClick(Log log, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
@@ -790,6 +837,12 @@ public class InventoryHelper {
     private static void handleLogItemsClick(Log log, User user, List<ItemStackSnapshot> actualItems, List<ItemStack> itemsForClicking, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
@@ -888,6 +941,12 @@ public class InventoryHelper {
     private static void handleLogPokemonClick(Log log, User user, List<Pokemon> pokemon, List<ItemStack> pokemonItems, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
@@ -984,6 +1043,12 @@ public class InventoryHelper {
     private static void handleLogMoneyClick(Log log, User user, List<MoneyWrapper> moneyWrappers, List<ItemStack> moneyWrapperItems, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
@@ -1075,6 +1140,12 @@ public class InventoryHelper {
     private static void handleStorageClick(PlayerStorage storage, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
@@ -1180,10 +1251,12 @@ public class InventoryHelper {
     private static void handleStorageItemsClick(final PlayerStorage storage, List<ItemStack> itemsForClicking, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
-            // If the player does not own the storage or have interact permissions they will not be able to interact with the items of the storage.
-            if (!player.getUniqueId().equals(storage.getPlayerUUID()) && !player.hasPermission("safetrade.admin.storage.interact.items")) {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
                 return;
             }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
@@ -1310,6 +1383,12 @@ public class InventoryHelper {
     private static void handleStoragePokemonClick(PlayerStorage storage, List<ItemStack> pokemonItems, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();
@@ -1438,6 +1517,12 @@ public class InventoryHelper {
     private static void handleStorageMoneyClick(PlayerStorage storage, List<ItemStack> moneyItems, ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
+            // Prevents players from clicking if they have a cooldown
+            if (hasCooldown(player.getUniqueId())) {
+                return;
+            }
+            addCooldown(player.getUniqueId());
+
             event.getTransactions().forEach(transaction -> {
                 transaction.getSlot().getProperty(SlotIndex.class, "slotindex").ifPresent(slot -> {
                     ItemStack item = transaction.getOriginal().createStack();

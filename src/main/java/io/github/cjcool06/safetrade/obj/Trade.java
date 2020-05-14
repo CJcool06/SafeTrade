@@ -42,7 +42,6 @@ public class Trade {
     private final Inventory tradeInventory;
 
     private TradeState state = TradeState.TRADING;
-    private List<UUID> clickingMainInv = new ArrayList<>();
 
     public Trade(Player participant1, Player participant2) {
         this(UUID.randomUUID(), participant1, participant2);
@@ -313,18 +312,16 @@ public class Trade {
     private void handleClick(ClickInventoryEvent event) {
         event.setCancelled(true);
         event.getCause().first(Player.class).ifPresent(player -> {
-            // This prevents players from clicking more than once per tick.
-            if (clickingMainInv.contains(player.getUniqueId())) {
+            // Prevents players from clicking if they have a cooldown
+            if (InventoryHelper.hasCooldown(player.getUniqueId())) {
                 return;
             }
+            // Needs larger tick delay than 1 because forceEnd has a tick delay
+            InventoryHelper.addCooldown(player.getUniqueId());
 
             event.getTransactions().forEach(transaction -> {
                 ItemStack item = transaction.getOriginal().createStack();
                 Optional<Side> optSide = getSide(player.getUniqueId());
-                clickingMainInv.add(player.getUniqueId());
-                // Needs larger tick delay because forceEnd has a tick delay
-                // This means a player's click can only be registered every 0.5 seconds (10 ticks)
-                Sponge.getScheduler().createTaskBuilder().execute(() -> clickingMainInv.remove(player.getUniqueId())).delayTicks(10).submit(SafeTrade.getPlugin());
 
                 // Only players in a side can use these buttons
                 if (optSide.isPresent()) {
