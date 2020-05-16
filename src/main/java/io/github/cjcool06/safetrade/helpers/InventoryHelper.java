@@ -1011,7 +1011,7 @@ public class InventoryHelper {
         }
 
         Inventory inventory = Inventory.builder()
-                .property(InventoryTitle.PROPERTY_NAME, InventoryTitle.of(Text.of(TextColors.DARK_AQUA, user.getName() + "'s Traded Items")))
+                .property(InventoryTitle.PROPERTY_NAME, InventoryTitle.of(Text.of(TextColors.DARK_AQUA, user.getName() + "'s Traded Money")))
                 .property(InventoryDimension.PROPERTY_NAME, new InventoryDimension(9, 6))
                 .of(InventoryArchetypes.MENU_GRID)
                 .listener(ClickInventoryEvent.class, event -> handleLogMoneyClick(log, user, moneyWrappers, itemStacks, event))
@@ -1054,13 +1054,13 @@ public class InventoryHelper {
                     ItemStack item = transaction.getOriginal().createStack();
                     PlayerStorage storage;
 
+                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
+                    }
+
                     // If the player does not have interact permissions they will not be able to interact with the money of the log.
                     if (!player.hasPermission("safetrade.admin.logs.interact.money")) {
                         return;
-                    }
-
-                    if (item.equalTo(ItemUtils.Other.getBackButton())) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(log.getInventory())).delayTicks(1).submit(SafeTrade.getPlugin());
                     }
 
                     if (event instanceof ClickInventoryEvent.Primary) {
