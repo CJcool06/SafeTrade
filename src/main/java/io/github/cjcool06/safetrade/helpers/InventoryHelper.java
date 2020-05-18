@@ -768,7 +768,7 @@ public class InventoryHelper {
                                 .delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                     else if (item.equalTo(ItemUtils.Logs.getMoney(log.getOtherParticipant()))) {
-                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getLogMoneyInventory(log, log.getOtherParticipant(), log.getSidesMoneyWrappers(), player.hasPermission("safetrade.admin.logs.interact.money"))))
+                        Sponge.getScheduler().createTaskBuilder().execute(() -> player.openInventory(getLogMoneyInventory(log, log.getOtherParticipant(), log.getOtherSidesMoneyWrappers(), player.hasPermission("safetrade.admin.logs.interact.money"))))
                                 .delayTicks(1).submit(SafeTrade.getPlugin());
                     }
                 });
