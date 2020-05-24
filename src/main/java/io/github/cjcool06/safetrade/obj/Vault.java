@@ -637,6 +637,7 @@ public class Vault {
         event.getCause().first(Player.class).ifPresent(player -> {
             // Prevents players from clicking if they have a cooldown
             if (InventoryHelper.hasCooldown(player.getUniqueId())) {
+                event.setCancelled(true);
                 return;
             }
             InventoryHelper.addCooldown(player.getUniqueId());
@@ -692,6 +693,7 @@ public class Vault {
         event.getCause().first(Player.class).ifPresent(player -> {
             // Prevents players from clicking if they have a cooldown
             if (InventoryHelper.hasCooldown(player.getUniqueId())) {
+                event.setCancelled(true);
                 return;
             }
             InventoryHelper.addCooldown(player.getUniqueId());
