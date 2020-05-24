@@ -1,4 +1,4 @@
-# SafeTrade
+# SafeTrade Sponge
 
 SafeTrade's primary purpose is to reduce the risk associated with trading your Pokemon, Items, and Money with randoms over the internet without sacrificing convenience.
 
@@ -14,3 +14,5 @@ SafeTrade's primary purpose is to reduce the risk associated with trading your P
 * Trade with anyone, anywhere.
 * Detailed logs
 * Staff can monitor a trade
+
+## SafeTrade Sponge is not being maintained at the moment. I may pick it back up in the future
