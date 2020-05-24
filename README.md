@@ -1,4 +1,4 @@
-# SafeTrade
+# SafeTrade Pixelmon
 
 SafeTrade's primary purpose is to reduce the risk associated with trading your Pokemon, Items, and Money with randoms over the internet.
 
