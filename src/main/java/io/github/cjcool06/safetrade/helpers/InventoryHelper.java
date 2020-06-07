@@ -13,6 +13,7 @@ import io.github.cjcool06.safetrade.api.events.trade.InventoryChangeEvent;
 import io.github.cjcool06.safetrade.api.events.trade.ViewerEvent;
 import io.github.cjcool06.safetrade.obj.*;
 import io.github.cjcool06.safetrade.trackers.Tracker;
+import io.github.cjcool06.safetrade.utils.BlacklistUtils;
 import io.github.cjcool06.safetrade.utils.ItemUtils;
 import io.github.cjcool06.safetrade.utils.Utils;
 import org.spongepowered.api.Sponge;
@@ -324,13 +325,30 @@ public class InventoryHelper {
                 .listener(InteractInventoryEvent.Open.class, event -> handleOpen(side.parentTrade, event))
                 .build(SafeTrade.getPlugin());
 
-        updateCurrenciesInventory(inventory, currencies);
+        updateCurrenciesInventory(side, inventory, currencies);
 
         return inventory;
     }
 
-    private static void updateCurrenciesInventory(Inventory inventory, Set<Currency> currencies) {
-        Iterator<Currency> iter = currencies.iterator();
+    private static void updateCurrenciesInventory(Side side, Inventory inventory, Set<Currency> currencies) {
+        List<Currency> nonBlacklistedCurrencies = new ArrayList<>();
+        Iterator<Currency> iter;
+
+        // Removes blacklisted currencies from currency inventory if player is not admin
+        if (!side.getPlayer().get().hasPermission("safetrade.admin.blacklist.bypass.currency")) {
+            for (Currency c : currencies) {
+                if (!BlacklistUtils.isBlacklisted(c)) {
+                    nonBlacklistedCurrencies.add(c);
+                }
+            }
+
+            iter = nonBlacklistedCurrencies.iterator();
+        }
+        // Else use all currencies
+        else {
+            iter = currencies.iterator();
+        }
+
         inventory.slots().forEach(slot -> {
             if (iter.hasNext()) {
                 slot.set(ItemUtils.Money.getCurrency(iter.next()));
@@ -470,6 +488,11 @@ public class InventoryHelper {
                                 if (Utils.untradeable.matches(pokemon) || partyStorage.countPokemon() <= 1 || pokemon.isInRanch()) {
                                     return;
                                 }
+                                // Prevents players trading blacklisted pokemon
+                                if (BlacklistUtils.isBlacklisted(pokemon) && !player.hasPermission("safetrade.admin.blacklist.bypass.pokemon")) {
+                                    SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.DARK_RED, pokemon.getSpecies().name, TextColors.RED, " is not allowed to be traded."));
+                                    return;
+                                }
                                 if (Utils.getAllPokemon(partyStorage).contains(pokemon)) {
                                     if (side.vault.addPokemon(pokemon)) {
                                         partyStorage.set(partyStorage.getPosition(pokemon), null);
@@ -487,6 +510,11 @@ public class InventoryHelper {
                             if (itemStack.equalTo(item)) {
                                 Pokemon pokemon = pcMap.get(itemStack);
                                 if (Utils.untradeable.matches(pokemon) || pokemon.isInRanch()) {
+                                    return;
+                                }
+                                // Prevents players trading blacklisted pokemon
+                                if (BlacklistUtils.isBlacklisted(pokemon) && !player.hasPermission("safetrade.admin.blacklist.bypass.pokemon")) {
+                                    SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.DARK_RED, pokemon.getSpecies().name, TextColors.RED, " is not allowed to be traded."));
                                     return;
                                 }
                                 List<Pokemon> pcPokemon = Utils.getAllPokemon(pcStorage);

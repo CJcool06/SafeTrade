@@ -1,11 +1,15 @@
 package io.github.cjcool06.safetrade.config;
 
 import io.github.cjcool06.safetrade.SafeTrade;
+import ninja.leaping.configurate.ConfigurationNode;
 import ninja.leaping.configurate.commented.CommentedConfigurationNode;
 import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
 import ninja.leaping.configurate.loader.ConfigurationLoader;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class Config {
     private static String DIR = "config/safetrade";
@@ -23,6 +27,10 @@ public class Config {
     public static boolean asyncStoragesEnabled = true;
     public static int asyncStoragesInterval = 1;
 
+    public static List<String> blacklistedCurrencies = new ArrayList<>();
+    public static List<String> blacklistedPokemon = new ArrayList<>();
+    public static List<String> blacklistedItems = new ArrayList<>();
+
     public static void load() {
         File file = new File(DIR, "safetrade.conf");
         try {
@@ -35,13 +43,21 @@ public class Config {
                 save();
             }
             else {
-                showEggStats = node.getNode("ShowEggStats").getBoolean();
-                showEggName = node.getNode("ShowEggName").getBoolean();
-                gcLogsEnabled = node.getNode("GarbageCollector", "Logs", "Enabled").getBoolean();
-                gcLogsExpiryTime = node.getNode("GarbageCollector", "Logs", "ExpiryTime").getInt();
-                gcStoragesEnabled = node.getNode("GarbageCollector", "Storages").getBoolean();
-                asyncStoragesEnabled = node.getNode("AsyncSaving", "Storages", "Enabled").getBoolean();
-                asyncStoragesInterval = node.getNode("AsyncSaving", "Storages", "Interval").getInt();
+                showEggStats = node.getNode("ShowEggStats").getBoolean(false);
+                showEggName = node.getNode("ShowEggName").getBoolean(true);
+                gcLogsEnabled = node.getNode("GarbageCollector", "Logs", "Enabled").getBoolean(true);
+                gcLogsExpiryTime = node.getNode("GarbageCollector", "Logs", "ExpiryTime").getInt(31);
+                gcStoragesEnabled = node.getNode("GarbageCollector", "Storages").getBoolean(true);
+                asyncStoragesEnabled = node.getNode("AsyncSaving", "Storages", "Enabled").getBoolean(true);
+                asyncStoragesInterval = node.getNode("AsyncSaving", "Storages", "Interval").getInt(1);
+
+                blacklistedCurrencies = node.getNode("Blacklists", "Currencies").getChildrenList().stream().map(ConfigurationNode::getString).collect(Collectors.toList());
+                blacklistedItems = node.getNode("Blacklists", "Items").getChildrenList().stream().map(ConfigurationNode::getString).collect(Collectors.toList());
+                blacklistedPokemon = node.getNode("Blacklists", "Pokemon").getChildrenList().stream().map(ConfigurationNode::getString).collect(Collectors.toList());
+
+                // This will load all values that are being using into the config at runtime, as well as
+                // ensure old configs will have any new nodes that are added.
+                save();
             }
         } catch (Exception e) {
             SafeTrade.getLogger().error("Could not load config.");
@@ -84,6 +100,20 @@ public class Config {
 
             node.getNode("AsyncSaving", "Storages", "Interval").setComment("The interval of asynchronous storage saving, in hours.");
             node.getNode("AsyncSaving", "Storages", "Interval").setValue(asyncStoragesInterval);
+
+            node.getNode("Blacklists").setValue("Prevents players from trading certain things.");
+
+            node.getNode("Blacklists", "Currencies").setComment("Prevents players from trading certain currencies. " +
+                    "\nUse the currency ID. Eg. \"economylite:coin\" (notice the quotations)");
+            node.getNode("Blacklists", "Currencies").setValue(blacklistedCurrencies);
+
+            node.getNode("Blacklists", "Items").setComment("Prevents players from trading certain items." +
+                    "\nUse the item ID. Eg. \"minecraft:paper\" (notice the quotations)");
+            node.getNode("Blacklists", "Items").setValue(blacklistedItems);
+
+            node.getNode("Blacklists", "Pokemon").setComment("Prevents players from trading certain pokemon." +
+                    "\nUse pokemon species. Eg. magikarp (notice the lack of quotations");
+            node.getNode("Blacklists", "Pokemon").setValue(blacklistedPokemon);
 
             loader.save(node);
         } catch (Exception e) {

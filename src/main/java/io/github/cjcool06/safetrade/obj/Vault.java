@@ -12,6 +12,7 @@ import io.github.cjcool06.safetrade.api.enums.TradeState;
 import io.github.cjcool06.safetrade.api.events.trade.TransactionEvent;
 import io.github.cjcool06.safetrade.helpers.InventoryHelper;
 import io.github.cjcool06.safetrade.trackers.Tracker;
+import io.github.cjcool06.safetrade.utils.BlacklistUtils;
 import io.github.cjcool06.safetrade.utils.ItemUtils;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.type.DyeColors;
@@ -661,7 +662,7 @@ public class Vault {
                         event.setCancelled(true);
                     }
 
-                    // The player is adding/removing items to/from the storage
+                    // The player is removing items from the storage
                     else if (slot.getValue() <= 35) {
                         // If true, the player is attempting to remove an item from the vault's item storage
                         if (itemStorage.contains(transaction.getOriginal().createStack())) {
@@ -672,14 +673,19 @@ public class Vault {
                                 Sponge.getScheduler().createTaskBuilder().execute((() -> SafeTrade.EVENT_BUS.post(new TransactionEvent.Item.Remove.Success(this, item)))).delayTicks(1).submit(SafeTrade.getPlugin());
                             }
                         }
-                        // Else, the player is attempting to add an item to the vault's item storage
+                    }
+                    // Else, the player is attempting to add an item to the storage
+                    else {
+                        if (SafeTrade.EVENT_BUS.post(new TransactionEvent.Item.Add.Pre(side.vault, transaction.getOriginal().createStack()))) {
+                            event.setCancelled(true);
+                        }
+                        // Prevents players from adding blacklisted items to trade
+                        if (BlacklistUtils.isBlacklisted(transaction.getOriginal().createStack()) && !player.hasPermission("safetrade.admin.blacklist.bypass.item")) {
+                            event.setCancelled(true);
+                            SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.DARK_RED, transaction.getOriginal().getType().getId(), TextColors.RED, " is not allowed to be traded."));
+                        }
                         else {
-                            if (SafeTrade.EVENT_BUS.post(new TransactionEvent.Item.Add.Pre(side.vault, transaction.getOriginal().createStack()))) {
-                                event.setCancelled(true);
-                            }
-                            else {
-                                Sponge.getScheduler().createTaskBuilder().execute((() -> SafeTrade.EVENT_BUS.post(new TransactionEvent.Item.Add.Success(this, item)))).delayTicks(1).submit(SafeTrade.getPlugin());
-                            }
+                            Sponge.getScheduler().createTaskBuilder().execute((() -> SafeTrade.EVENT_BUS.post(new TransactionEvent.Item.Add.Success(this, item)))).delayTicks(1).submit(SafeTrade.getPlugin());
                         }
                     }
                 });
@@ -730,7 +736,7 @@ public class Vault {
                                         else {
                                             Tracker.getOrCreateStorage(player).addPokemon(pokemon);
                                             SafeTrade.sendMessageToPlayer(player, PrefixType.SAFETRADE, Text.of(TextColors.RED, "Uh oh, something went wrong! Your Pokemon was put in to your SafeTrade storage for safe-keeping. " +
-                                                    "Reconnect to receive everything in your storage."));
+                                                    "Use /safetrade storage."));
                                         }
                                     }
                                 }).delayTicks(1).submit(SafeTrade.getPlugin());

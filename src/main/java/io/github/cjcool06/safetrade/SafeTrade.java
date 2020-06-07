@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
 public class SafeTrade {
     public static final String ID = "safetrade";
     public static final String NAME = "SafeTrade";
-    public static final String VERSION = "3.0.4";
+    public static final String VERSION = "3.1.0";
     public static final String DESCRIPTION = "Trade Pokemon, Items, and Money safely";
     public static final String AUTHORS = "CJcool06";
 
@@ -82,6 +82,13 @@ public class SafeTrade {
         Sponge.getCommandManager().register(this, TradeCommand.getSpec(), "safetrade");
         logger.info("Commands registered.");
 
+        Config.load();
+        logger.info("Config loaded.");
+    }
+
+    @Listener
+    public void onInit(GameInitializationEvent event) {
+
         Sponge.getServiceManager()
                 .getRegistration(EconomyService.class)
                 .ifPresent(prov -> economyService = prov.getProvider());
@@ -91,12 +98,6 @@ public class SafeTrade {
             logger.warn("No economy service was found. Shit's gonna break.");
         }
 
-        Config.load();
-        logger.info("Config loaded.");
-    }
-
-    @Listener
-    public void onInit(GameInitializationEvent event) {
         Sponge.getScheduler().createTaskBuilder()
                 .execute(() -> {
                     if (Config.gcLogsEnabled) {
