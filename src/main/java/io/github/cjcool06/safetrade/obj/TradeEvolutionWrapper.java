@@ -92,10 +92,12 @@ public class TradeEvolutionWrapper {
             for (Pokemon pokemon : side.vault.getAllPokemon()) {
                 EntityPixelmon pixelmon = pokemon.getOrSpawnPixelmon((EntityPlayerMP) side.getPlayer().get());
 
-                if (canDoEvolution(side, pixelmon)) {
-                    possibleEvolutions.add(pokemon);
+                if (pixelmon != null) {
+                    if (canDoEvolution(side, pixelmon)) {
+                        possibleEvolutions.add(pokemon);
+                    }
+                    pixelmon.unloadEntity();
                 }
-                pixelmon.unloadEntity();
             }
         }
 
