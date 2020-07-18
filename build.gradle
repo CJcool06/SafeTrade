@@ -22,6 +22,7 @@ repositories {
 
 dependencies {
     compile 'org.spongepowered:spongeapi:7.1.0-SNAPSHOT'
+    compile fileTree(dir: 'libs', include: ['*.jar'])
 }
 
 processResources {
