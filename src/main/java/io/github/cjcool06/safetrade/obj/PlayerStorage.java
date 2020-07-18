@@ -299,7 +299,7 @@ public class PlayerStorage {
             for (JsonElement element : jsonObject.get("Commands").getAsJsonArray()) {
                 CommandWrapper wrapper = CommandWrapper.fromContainer(element.getAsJsonObject());
                 if (wrapper != null) {
-                    commands.add(CommandWrapper.fromContainer(element.getAsJsonObject()));
+                    commands.add(wrapper);
                 }
             }
 
