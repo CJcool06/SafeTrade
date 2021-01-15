@@ -41,7 +41,7 @@ import java.util.*;
 
 public class Utils {
 
-    public static final PokemonSpec unbreedable = new PokemonSpec("untradeable");
+    public static final PokemonSpec unbreedable = new PokemonSpec("unbreedable");
     public static final PokemonSpec untradeable = new PokemonSpec("untradeable");
 
     public static Optional<User> getUser(UUID uuid) {
